@@ -11,16 +11,6 @@ spec:
     - host: gamecloud.local
       http:
         paths:
-          # Frontend
-          - path: /()(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: frontend-service
-                port:
-                  number: 80
-
-          # Auth API
           - path: /api/auth(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
@@ -28,8 +18,6 @@ spec:
                 name: auth-service
                 port:
                   number: 80
-
-          # Pendu API
           - path: /api/pendu(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
@@ -37,17 +25,6 @@ spec:
                 name: pendu-service
                 port:
                   number: 80
-
-          # Puissance 4 API
-          - path: /api/p4(/|$)(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: p4-service
-                port:
-                  number: 80
-
-          # Quiz API
           - path: /api/quiz(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
@@ -55,8 +32,13 @@ spec:
                 name: quiz-service
                 port:
                   number: 80
-
-          # Memory API
+          - path: /api/p4(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: p4-service
+                port:
+                  number: 80
           - path: /api/memory(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
@@ -64,14 +46,17 @@ spec:
                 name: memory-service
                 port:
                   number: 80
-
-          # Score API - Via interceptor KEDA (serverless)
           - path: /api/scores(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
-                name: keda-add-ons-http-interceptor-proxy
+                name: score-service
                 port:
-                  number: 8080
-          # L'interceptor sait rediriger vers score-service grâce
-          # au HTTPScaledObject déclaré
+                  number: 80
+          - path: /(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80

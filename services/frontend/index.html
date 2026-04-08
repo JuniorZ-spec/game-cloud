@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GameCloud</title>
+  <style>
+    :root {
+      --bg: #081224;
+      --panel: #10203a;
+      --panel-2: #122949;
+      --line: rgba(255, 255, 255, 0.08);
+      --text: #e9eef6;
+      --muted: #9fb0c8;
+      --accent: #5eead4;
+      --accent-2: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(96, 165, 250, 0.18), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(94, 234, 212, 0.12), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+    .hero {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      line-height: 1;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 700px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.18);
+    }
+    .card h2, .card h3 {
+      margin-top: 0;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #081224;
+      font-weight: 700;
+      padding: 10px 18px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--accent);
+      font-size: 0.92rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <span class="muted">TP GameCloud ESGIS</span>
+      <h1>Plateforme multi-jeux sur Kubernetes</h1>
+      <p>
+        Cette interface sert de facade simple pour tester les APIs exposees par l'Ingress.
+        Elle ne remplace pas le travail principal du TP, mais permet de valider rapidement les routes,
+        le JWT et le leaderboard.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Health checks</h2>
+        <div class="actions">
+          <button onclick="runHealthChecks()">Tester les services</button>
+        </div>
+        <pre id="health-output" class="muted">Aucun test lance.</pre>
+      </article>
+
+      <article class="card">
+        <h2>Authentification</h2>
+        <input id="username" placeholder="Pseudo" value="joueur1" />
+        <input id="password" type="password" placeholder="Mot de passe" value="test123" />
+        <div class="actions">
+          <button onclick="registerUser()">Register</button>
+          <button class="secondary" onclick="loginUser()">Login</button>
+        </div>
+        <pre id="auth-output" class="muted">Aucun token recupere.</pre>
+      </article>
+
+      <article class="card">
+        <h2>Leaderboard</h2>
+        <div class="actions">
+          <button onclick="loadLeaderboard()">Lire le top scores</button>
+          <button class="secondary" onclick="submitScore()">Envoyer un score test</button>
+        </div>
+        <pre id="score-output" class="muted">Leaderboard non charge.</pre>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    let token = null;
+
+    async function request(path, options = {}) {
+      const response = await fetch(path, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(options.headers || {})
+        },
+        ...options
+      });
+
+      const text = await response.text();
+      try {
+        return { ok: response.ok, status: response.status, data: JSON.parse(text) };
+      } catch (_error) {
+        return { ok: response.ok, status: response.status, data: text };
+      }
+    }
+
+    async function runHealthChecks() {
+      const services = [
+        ["/api/auth/healthz", "auth-api"],
+        ["/api/pendu/healthz", "pendu-api"],
+        ["/api/quiz/healthz", "quiz-api"],
+        ["/api/p4/healthz", "puissance4-api"],
+        ["/api/memory/healthz", "memory-api"],
+        ["/api/scores/healthz", "score-api"]
+      ];
+      const results = [];
+
+      for (const [path, label] of services) {
+        try {
+          const response = await request(path);
+          results.push(`${label}: ${response.status} ${JSON.stringify(response.data)}`);
+        } catch (error) {
+          results.push(`${label}: ERROR ${error.message}`);
+        }
+      }
+
+      document.getElementById("health-output").textContent = results.join("\n");
+    }
+
+    async function registerUser() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const response = await request("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+      });
+      document.getElementById("auth-output").textContent = JSON.stringify(response.data, null, 2);
+      if (response.data && response.data.token) {
+        token = response.data.token;
+      }
+    }
+
+    async function loginUser() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const response = await request("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+      });
+      document.getElementById("auth-output").textContent = JSON.stringify(response.data, null, 2);
+      if (response.data && response.data.token) {
+        token = response.data.token;
+      }
+    }
+
+    async function loadLeaderboard() {
+      const response = await request("/api/scores/leaderboard");
+      document.getElementById("score-output").textContent = JSON.stringify(response.data, null, 2);
+    }
+
+    async function submitScore() {
+      if (!token) {
+        document.getElementById("score-output").textContent = "Connectez-vous d'abord pour envoyer un score.";
+        return;
+      }
+
+      const response = await request("/api/scores/score", {
+        method: "POST",
+        body: JSON.stringify({
+          game: "quiz",
+          score: Math.floor(Math.random() * 1000),
+          duration_sec: 45
+        })
+      });
+      document.getElementById("score-output").textContent = JSON.stringify(response.data, null, 2);
+    }
+  </script>
+</body>
+</html>

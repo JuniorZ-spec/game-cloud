@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pendu-api
+  namespace: gamecloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pendu-api
+  template:
+    metadata:
+      labels:
+        app: pendu-api
+    spec:
+      containers:
+        - name: pendu-api
+          image: gamecloud/pendu-api:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5002
+          env:
+            - name: REDIS_HOST
+              value: redis-service
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5002
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5002
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pendu-service
+  namespace: gamecloud
+spec:
+  selector:
+    app: pendu-api
+  ports:
+    - port: 80
+      targetPort: 5002

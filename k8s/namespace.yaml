@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gamecloud
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gamecloud-secrets
+  namespace: gamecloud
+type: Opaque
+stringData:
+  POSTGRES_DB: gamecloud
+  POSTGRES_USER: gameuser
+  POSTGRES_PASSWORD: GameCloud@K8s2024!
+  JWT_SECRET: super-jwt-secret-change-in-prod

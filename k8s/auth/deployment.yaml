@@ -1,26 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: score-api
+  name: auth-api
   namespace: gamecloud
-  labels:
-    app: score-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: score-api
+      app: auth-api
   template:
     metadata:
       labels:
-        app: score-api
+        app: auth-api
     spec:
       containers:
-        - name: score-api
-          image: gamecloud/score-api:v1
+        - name: auth-api
+          image: gamecloud/auth-api:v1
           imagePullPolicy: Never
           ports:
-            - containerPort: 3003
+            - containerPort: 5001
           env:
             - name: DB_HOST
               value: postgres-service
@@ -47,32 +45,24 @@ spec:
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 3003
-            initialDelaySeconds: 10
+              port: 5001
+            initialDelaySeconds: 15
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 3003
-            initialDelaySeconds: 20
+              port: 5001
+            initialDelaySeconds: 30
             periodSeconds: 10
-          resources:
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
-            limits:
-              memory: "128Mi"
-              cpu: "100m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: score-service
+  name: auth-service
   namespace: gamecloud
 spec:
   selector:
-    app: score-api
+    app: auth-api
   ports:
     - port: 80
-      targetPort: 3003
-  type: ClusterIP
+      targetPort: 5001
