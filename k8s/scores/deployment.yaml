@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: score-api
+  namespace: gamecloud
+  labels:
+    app: score-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: score-api
+  template:
+    metadata:
+      labels:
+        app: score-api
+    spec:
+      containers:
+        - name: score-api
+          image: gamecloud/score-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: postgres-service
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: gamecloud
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: score-service
+  namespace: gamecloud
+spec:
+  selector:
+    app: score-api
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
