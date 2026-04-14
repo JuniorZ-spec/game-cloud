@@ -4,7 +4,7 @@
 
 Construire une plateforme multi-jeux sur Kubernetes local avec:
 
-- un frontend `Nginx`
+- un frontend `Nginx` (Game Center interactif)
 - cinq APIs metier
 - deux stockages techniques `PostgreSQL` et `Redis`
 - un routage unifie via `Ingress`
@@ -52,11 +52,11 @@ curl http://gamecloud.local/api/scores/healthz
 
 ## Flux metier attendu
 
-1. Creer un compte via `auth-api`
-2. Recuperer un JWT via `login`
-3. Jouer a un mini-jeu
-4. Poster un score sur `score-api`
-5. Lire le leaderboard
+1. Creer un compte via `auth-api` (depuis l'interface de connexion)
+2. Recuperer un JWT via `login` (automatique lors de la connexion)
+3. Jouer a un mini-jeu (Pendu, Quiz, Puissance 4 ou Memory)
+4. Poster un score sur `score-api` (propose a la fin d'une partie si connecte)
+5. Lire le leaderboard global
 
 ## Fichiers clefs du depot
 
