@@ -292,11 +292,26 @@
     try {
       state = await call(`/api/p4/game/${state.id}/move`, 'POST', {column:c}); 
       renderP4();
+      
+      // IA "Smarter" : joue après 800ms
       if(!state.winner && state.current_player == 2) {
         setTimeout(async () => { 
           try {
-            state = await call(`/api/p4/game/${state.id}/move`, 'POST', {column: Math.floor(Math.random()*7)}); 
-            renderP4();
+            // 1. Trouver les colonnes valides (non pleines)
+            const validCols = [];
+            for(let col=0; col<7; col++) {
+              if(state.board[0][col] === 0) validCols.push(col);
+            }
+            
+            if(validCols.length > 0) {
+              // 2. Stratégie simple : privilégier le centre (colonne 3) si disponible
+              let choice;
+              if(validCols.includes(3)) choice = 3;
+              else choice = validCols[Math.floor(Math.random() * validCols.length)];
+              
+              state = await call(`/api/p4/game/${state.id}/move`, 'POST', {column: choice}); 
+              renderP4();
+            }
           } finally { isMoving = false; }
         }, 800);
       } else { isMoving = false; }
