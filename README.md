@@ -47,15 +47,22 @@ services/
 
 ## Services
 
-| Service | Stack | Port interne | Stockage |
-| --- | --- | --- | --- |
-| `frontend` | Nginx + HTML/JS | `80` | Aucun |
-| `auth-api` | Flask | `5001` | PostgreSQL |
-| `pendu-api` | Flask | `5002` | Redis |
-| `quiz-api` | Express | `3001` | Aucun |
-| `puissance4-api` | Flask | `5003` | Redis |
-| `memory-api` | Express | `3002` | Redis |
-| `score-api` | Express | `3003` | PostgreSQL |
+| `frontend` | Nginx + HTML/JS Arcade | `80` | Aucun (UI Interactive) |
+| `auth-api` | Flask (JWT) | `5001` | PostgreSQL |
+| `pendu-api` | Flask (Jeu) | `5002` | Redis |
+| `quiz-api` | Express (Questions) | `3001` | Aucun |
+| `puissance4-api` | Flask (IA) | `5003` | Redis |
+| `memory-api` | Express (Session) | `3002` | Redis |
+| `score-api` | Express (KEDA ready) | `3003` | PostgreSQL |
+
+## Fonctionnalites de l'Arcade
+
+L'interface frontend (`http://gamecloud.local`) propose :
+
+- **Système de Login/Invité** : Jouez immédiatement ou créez un compte pour le classement.
+- **4 Mini-jeux interactifs** : Pendu, Quiz, Puissance 4 (avec IA) et Memory.
+- **Leaderboard Global** : Suivez les meilleurs scores en temps réel.
+- **Monitoring Santé** : Dashboard d'état des micro-services intégré.
 
 ## Demarrage rapide
 
