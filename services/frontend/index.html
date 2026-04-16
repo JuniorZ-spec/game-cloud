@@ -441,11 +441,28 @@
     if (socket && roomCode) {
       socket.emit("submit_answer", { roomCode, answer: a });
     } else {
-      checkQ(); // Solo
+      validateSoloAnswer(); // Appel de la nouvelle fonction de validation
     }
   }
 
-  function addClueUI(clue) {
+  function validateSoloAnswer() {
+    const a = document.getElementById('ans').value.toLowerCase().trim();
+    if(!a) return;
+    
+    const correct = state.answer.toLowerCase();
+    if(a === correct) {
+      // Calcul des points : plus on répond vite (moins d'indices), plus on gagne
+      let finalScore = state.points || 10;
+      if (state.round === 3) {
+        finalScore = Math.max(2, 11 - currentClueIdx);
+      }
+      notify(`Top ! Bonne réponse : ${state.answer} (+${finalScore} pts)`, false);
+      end(finalScore);
+    } else {
+      notify("Faux ! La réponse était : " + state.answer, true);
+      end(0);
+    }
+  }
     const list = document.getElementById('clues-list');
     const li = document.createElement('li');
     li.style.marginBottom = "8px";

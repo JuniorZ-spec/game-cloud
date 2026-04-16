@@ -13,28 +13,62 @@ const io = new Server(httpServer, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+// --- Supabase (optional - falls back to mock data if not configured) ---
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+// --- Mock questions for TP (when Supabase is not configured) ---
+const mockQuestions = [
+  { id: 1, question: "Quelle est la capitale de la France ?", answer: "Paris", clues: ["C'est une grande ville", "Tour Eiffel", "Seine"] },
+  { id: 2, question: "Quel est le langage de programmation le plus utilisé ?", answer: "JavaScript", clues: ["Web", "Navigateur", "Node.js"] },
+  { id: 3, question: "Quel est le plus grand océan ?", answer: "Pacifique", clues: ["Asie", "Amériques", "Le plus grand"] },
+  { id: 4, question: "Qui a inventé Kubernetes ?", answer: "Google", clues: ["Google", "Conteneurs", "Orchestration"] },
+  { id: 5, question: "Quel est le protocole de routage le plus utilisé sur Internet ?", answer: "BGP", clues: ["Border Gateway", "Protocole", "Routage"] }
+];
 
 // --- Game State (In memory for TP, ideally in Redis) ---
 const rooms = new Map(); // roomCode -> { players, question, status, clueIdx, timer }
+const mockScores = [];
 
 app.get("/healthz", (_req, res) => {
-  res.json({ status: "ok", service: "quiz-api-questions-esgis-network" });
+  res.json({ status: "ok", service: "quiz-api-questions-esgis-network", supabase: !!supabase });
 });
 
 // Endpoint solo classique (compatible avec l'ancien frontend)
 app.get("/question", async (_req, res) => {
-  const { data } = await supabase.from("qpuc_questions").select("*");
-  const question = data[Math.floor(Math.random() * data.length)];
-  res.json(question);
+  try {
+    if (supabase) {
+      const { data } = await supabase.from("qpuc_questions").select("*");
+      if (data && data.length > 0) {
+        const question = data[Math.floor(Math.random() * data.length)];
+        return res.json(question);
+      }
+    }
+    // Fallback to mock data
+    const question = mockQuestions[Math.floor(Math.random() * mockQuestions.length)];
+    res.json(question);
+  } catch (error) {
+    console.error("Error fetching question:", error);
+    const question = mockQuestions[Math.floor(Math.random() * mockQuestions.length)];
+    res.json(question);
+  }
 });
 
 app.post("/score", async (req, res) => {
   const { username, score } = req.body;
-  await supabase.from("qpuc_scores").insert([{ username, score }]);
-  res.json({ status: "saved" });
+  try {
+    if (supabase) {
+      await supabase.from("qpuc_scores").insert([{ username, score }]);
+    } else {
+      mockScores.push({ username, score, date: new Date() });
+    }
+    res.json({ status: "saved" });
+  } catch (error) {
+    console.error("Error saving score:", error);
+    mockScores.push({ username, score, date: new Date() });
+    res.json({ status: "saved" });
+  }
 });
 
 // --- Real-time Logic (Multiplayer) ---
@@ -126,6 +160,7 @@ io.on("connection", (socket) => {
 });
 
 const PORT = 3001;
-httpServer.listen(PORT, () => {
-  console.log(`quiz-api-questions-esgis (Socket.io) listening on :${PORT}`);
+const HOST = "0.0.0.0";
+httpServer.listen(PORT, HOST, () => {
+  console.log(`quiz-api-questions-esgis (Socket.io) listening on ${HOST}:${PORT}`);
 });

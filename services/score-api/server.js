@@ -101,8 +101,8 @@ app.get("/leaderboard/:game", async (req, res) => {
 
 initDb()
   .then(() => {
-    app.listen(3003, () => {
-      console.log("score-api listening on :3003");
+    app.listen(3003, "0.0.0.0", () => {
+      console.log("score-api listening on 0.0.0.0:3003");
     });
   })
   .catch((error) => {

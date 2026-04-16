@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: gamecloud
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gamecloud
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - gamecloud
+
+  auth-api:
+    build: ./services/auth-api
+    ports:
+      - "5001:5001"
+    environment:
+      DB_HOST: postgres
+      DB_NAME: gamecloud
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: gamecloud-secret-key
+    depends_on:
+      - postgres
+    networks:
+      - gamecloud
+
+  pendu-api:
+    build: ./services/pendu-api
+    ports:
+      - "5002:5002"
+    environment:
+      REDIS_HOST: redis
+    depends_on:
+      - redis
+    networks:
+      - gamecloud
+
+  quiz-api:
+    build: ./services/quiz-api
+    ports:
+      - "3001:3001"
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}
+    networks:
+      - gamecloud
+
+  puissance4-api:
+    build: ./services/puissance4-api
+    ports:
+      - "5003:5003"
+    environment:
+      REDIS_HOST: redis
+    depends_on:
+      - redis
+    networks:
+      - gamecloud
+
+  memory-api:
+    build: ./services/memory-api
+    ports:
+      - "3002:3002"
+    environment:
+      REDIS_HOST: redis
+    depends_on:
+      - redis
+    networks:
+      - gamecloud
+
+  score-api:
+    build: ./services/score-api
+    ports:
+      - "3003:3003"
+    environment:
+      DB_HOST: postgres
+      DB_NAME: gamecloud
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      - postgres
+    networks:
+      - gamecloud
+
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - auth-api
+      - pendu-api
+      - quiz-api
+      - puissance4-api
+      - memory-api
+      - score-api
+    networks:
+      - gamecloud
+
+volumes:
+  postgres_data:
+
+networks:
+  gamecloud:
+    driver: bridge

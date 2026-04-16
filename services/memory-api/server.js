@@ -93,6 +93,6 @@ app.post("/session/:sessionId/flip", async (req, res) => {
   return res.json(session);
 });
 
-app.listen(3002, () => {
-  console.log("memory-api listening on :3002");
+app.listen(3002, "0.0.0.0", () => {
+  console.log("memory-api listening on 0.0.0.0:3002");
 });
