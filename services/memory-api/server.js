@@ -46,11 +46,7 @@ app.post("/session/start", async (_req, res) => {
   };
 
   await redis.set(`memory:${sessionId}`, JSON.stringify(session), { EX: 3600 });
-  res.status(201).json({
-    id: sessionId,
-    total_cards: session.cards.length,
-    found: session.found
-  });
+  res.status(201).json(session);
 });
 
 app.get("/session/:sessionId", async (req, res) => {
