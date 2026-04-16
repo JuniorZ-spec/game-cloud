@@ -300,7 +300,12 @@
       </div>
       <div id="quiz-lobby" style="display:none; width:100%">
         <h3 id="lobby-title">Salon Multijoueur</h3>
-        <div id="lobby-actions">
+        <div id="lobby-config" style="margin-bottom:20px; border: 1px solid #334155; padding: 15px; border-radius: 10px;">
+           <label style="font-size:0.8rem; color:var(--muted)">IP du Leader (laisser vide si c'est vous) :</label>
+           <input type="text" id="server-ip" placeholder="Ex: 192.168.1.15" style="text-align:center; margin-bottom:10px;">
+           <button class="btn btn-secondary" style="padding:5px;" onclick="connectToRemote()">Vérifier la connexion</button>
+        </div>
+        <div id="lobby-actions" style="display:none">
            <button class="btn" onclick="createRoom()">Créer un salon</button>
            <input type="text" id="join-code" placeholder="Code du salon (ex: ABCD)" style="text-align:center">
            <button class="btn btn-secondary" onclick="joinRoom()">Rejoindre</button>
@@ -341,9 +346,19 @@
   }
 
   // --- LOGIQUE RÉSEAU (SOCKET.IO) ---
-  function initSocket() {
-    if (socket) return;
-    socket = io(); // Se connecte sur le host actuel (gamecloud.local)
+  function connectToRemote() {
+    const ip = document.getElementById('server-ip').value.trim();
+    const target = ip ? `http://${ip}` : ''; // Vide = host actuel
+    
+    initSocket(target);
+    document.getElementById('lobby-actions').style.display = 'block';
+    notify(ip ? `Connecté au serveur de ${ip}` : "Connecté au serveur local");
+  }
+
+  function initSocket(target = '') {
+    if (socket) socket.disconnect(); // Reset si déjà existant
+    
+    socket = io(target); 
     
     socket.on("room_created", (code) => {
       roomCode = code;

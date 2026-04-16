@@ -6,14 +6,19 @@ CURL_RESOLVE="${CURL_RESOLVE:-}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
+if [[ -z "${CURL_RESOLVE}" && "${BASE_URL}" =~ ^http://gamecloud\.local(:([0-9]+))?(/|$) ]]; then
+  CURL_RESOLVE="gamecloud.local:${BASH_REMATCH[2]:-80}:127.0.0.1"
+fi
+
 curl_check() {
   local output_file="$1"
   local url="$2"
+  local -a curl_args=(--noproxy '*' -fsS)
 
   if [[ -n "${CURL_RESOLVE}" ]]; then
-    curl -fsS --resolve "${CURL_RESOLVE}" "${url}" > "${output_file}"
+    curl "${curl_args[@]}" --resolve "${CURL_RESOLVE}" "${url}" > "${output_file}"
   else
-    curl -fsS "${url}" > "${output_file}"
+    curl "${curl_args[@]}" "${url}" > "${output_file}"
   fi
 }
 
