@@ -50,12 +50,16 @@ spec:
               port: 3003
             initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /healthz
               port: 3003
             initialDelaySeconds: 20
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
           resources:
             requests:
               memory: "64Mi"
