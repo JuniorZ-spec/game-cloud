@@ -21,7 +21,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const rooms = new Map(); // roomCode -> { players, question, status, clueIdx, timer }
 
 app.get("/healthz", (_req, res) => {
-  res.json({ status: "ok", service: "quiz-api-qpuc-network" });
+  res.json({ status: "ok", service: "quiz-api-questions-esgis-network" });
 });
 
 // Endpoint solo classique (compatible avec l'ancien frontend)
@@ -127,5 +127,5 @@ io.on("connection", (socket) => {
 
 const PORT = 3001;
 httpServer.listen(PORT, () => {
-  console.log(`quiz-api-qpuc (Socket.io) listening on :${PORT}`);
+  console.log(`quiz-api-questions-esgis (Socket.io) listening on :${PORT}`);
 });

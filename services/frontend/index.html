@@ -61,12 +61,10 @@
     
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th { text-align: left; color: var(--muted); padding: 10px; border-bottom: 1px solid #334155; }
-    <style>
-    ...
-      td { padding: 12px 10px; border-bottom: 1px solid #1e293b; }
+    td { padding: 12px 10px; border-bottom: 1px solid #1e293b; }
 
-      .room-badge { background: var(--success); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px; }
-    </style>
+    .room-badge { background: var(--success); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px; }
+  </style>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     </head>
     <body>
@@ -219,7 +217,7 @@
   }
 
   async function end(score) {
-    if (clueInterval) clearInterval(clueInterval); // Arrêt du timer QPUC
+    if (clueInterval) clearInterval(clueInterval); // Arrêt du timer Questions pour ESGIS
     const area = document.getElementById('game-content');
     let h = `<h2 style="font-size:2.5rem; margin-bottom:10px;">${score > 0 ? 'Bravo ! 🎉' : 'Dommage... 💀'}</h2>
              <p style="font-size:1.5rem">Ton score : <strong>${score}</strong></p>`;
@@ -228,9 +226,9 @@
     if(score > 0) {
       try {
         if (currentGame === 'quiz') {
-          // Sauvegarde spécifique QPUC dans Supabase via quiz-api
+          // Sauvegarde spécifique Questions pour ESGIS dans Supabase via quiz-api
           await call('/api/quiz/score', 'POST', { username: user.name, score: score });
-          h += `<p style="color:var(--success); font-weight:bold;">✅ Score QPUC enregistré dans Supabase !</p>`;
+          h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré dans Supabase !</p>`;
         } else if (user.token) {
           // Sauvegarde standard pour les autres jeux
           await call('/api/scores/score', 'POST', {game:currentGame, score:score});
@@ -267,7 +265,7 @@
     renderPendu(); 
   }
 
-  // --- JEU : QUIZ QPUC (Solo & Réseau) ---
+  // --- JEU : QUIZ Questions pour ESGIS (Solo & Réseau) ---
   let socket = null;
   let roomCode = null;
   let clueInterval = null;
@@ -280,7 +278,7 @@
     if (iaTimer) clearTimeout(iaTimer);
 
     area.innerHTML = `
-      <h2 style="margin-top:0">QPUC : Cloud Edition</h2>
+      <h2 style="margin-top:0">Questions pour ESGIS : Cloud Edition</h2>
       <div id="quiz-mode-select">
         <p>Choisis ton mode de jeu :</p>
         <button class="btn" onclick="startSoloQuiz()">👤 Jouer contre l'IA</button>
