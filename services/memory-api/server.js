@@ -11,9 +11,16 @@ const symbols = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const redis = createClient({
   url: `redis://${process.env.REDIS_HOST || "redis-service"}:6379`
 });
-redis.connect().catch((error) => {
+
+redis.on("error", (error) => {
   console.error("memory-api redis error:", error);
 });
+
+const ensureRedis = async () => {
+  if (!redis.isOpen) {
+    await redis.connect();
+  }
+};
 
 const shuffledDeck = () => {
   const cards = [...symbols, ...symbols].map((value, index) => ({ id: index + 1, value }));
@@ -29,6 +36,7 @@ app.get("/healthz", async (_req, res) => {
 });
 
 app.post("/session/start", async (_req, res) => {
+  await ensureRedis();
   const sessionId = crypto.randomUUID();
   const session = {
     id: sessionId,
@@ -46,6 +54,7 @@ app.post("/session/start", async (_req, res) => {
 });
 
 app.get("/session/:sessionId", async (req, res) => {
+  await ensureRedis();
   const payload = await redis.get(`memory:${req.params.sessionId}`);
   if (!payload) {
     return res.status(404).json({ error: "session not found" });
@@ -54,6 +63,7 @@ app.get("/session/:sessionId", async (req, res) => {
 });
 
 app.post("/session/:sessionId/flip", async (req, res) => {
+  await ensureRedis();
   const payload = await redis.get(`memory:${req.params.sessionId}`);
   if (!payload) {
     return res.status(404).json({ error: "session not found" });

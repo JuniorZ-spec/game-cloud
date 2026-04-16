@@ -3,17 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-kubectl apply -f "${ROOT_DIR}/k8s/namespace.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/postgres/"
-kubectl apply -f "${ROOT_DIR}/k8s/redis/"
-kubectl apply -f "${ROOT_DIR}/k8s/auth/"
-kubectl apply -f "${ROOT_DIR}/k8s/pendu/"
-kubectl apply -f "${ROOT_DIR}/k8s/quiz/"
-kubectl apply -f "${ROOT_DIR}/k8s/puissance4/"
-kubectl apply -f "${ROOT_DIR}/k8s/memory/"
-kubectl apply -f "${ROOT_DIR}/k8s/scores/"
-kubectl apply -f "${ROOT_DIR}/k8s/frontend/"
-kubectl apply -f "${ROOT_DIR}/k8s/ingress/ingress.yaml"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/namespace.yaml"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/postgres/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/redis/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/auth/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/pendu/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/quiz/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/puissance4/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/memory/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/scores/deployment.yaml"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/frontend/"
+kubectl apply --validate=false -f "${ROOT_DIR}/k8s/ingress/ingress.yaml"
 
 echo "Waiting for workloads..."
 kubectl rollout status deployment/postgres -n gamecloud --timeout=180s

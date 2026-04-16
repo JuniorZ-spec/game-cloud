@@ -3,6 +3,7 @@ kind: Cluster
 name: gamecloud
 nodes:
   - role: control-plane
+    image: kindest/node:v1.31.0
     kubeadmConfigPatches:
       - |
         kind: InitConfiguration
@@ -14,4 +15,6 @@ nodes:
         hostPort: 80
         protocol: TCP
   - role: worker
+    image: kindest/node:v1.31.0
   - role: worker
+    image: kindest/node:v1.31.0

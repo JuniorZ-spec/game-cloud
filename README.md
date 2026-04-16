@@ -81,11 +81,7 @@ kind create cluster --config cluster/kind-config.yaml
 ### 3. Installer l'Ingress NGINX
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-kubectl wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=180s
+./scripts/install-ingress-nginx-kind.sh
 ```
 
 ### 4. Deployer GameCloud
@@ -103,6 +99,15 @@ echo "127.0.0.1 gamecloud.local" | sudo tee -a /etc/hosts
 ### 6. Verifier la plateforme
 
 ```bash
+./scripts/test-gamecloud.sh
+```
+
+Si le port hote `80` est deja pris et que vous avez adapte `cluster/kind-config.yaml`
+vers un autre port (par exemple `8081`), vous pouvez verifier via:
+
+```bash
+BASE_URL=http://gamecloud.local:8081 \
+CURL_RESOLVE=gamecloud.local:8081:127.0.0.1 \
 ./scripts/test-gamecloud.sh
 ```
 

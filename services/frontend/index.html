@@ -214,17 +214,26 @@
   }
 
   async function end(score) {
+    if (clueInterval) clearInterval(clueInterval); // Arrêt du timer QPUC
     const area = document.getElementById('game-content');
     let h = `<h2 style="font-size:2.5rem; margin-bottom:10px;">${score > 0 ? 'Bravo ! 🎉' : 'Dommage... 💀'}</h2>
              <p style="font-size:1.5rem">Ton score : <strong>${score}</strong></p>`;
     
-    if(user.token && score > 0) {
+    // Sauvegarde du score
+    if(score > 0) {
       try {
-        await call('/api/scores/score', 'POST', {game:currentGame, score:score});
-        h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré dans le classement !</p>`;
-      } catch(e) {}
-    } else if (score > 0) {
-      h += `<p style="color:var(--muted)">Connecte-toi pour enregistrer tes prochains scores.</p>`;
+        if (currentGame === 'quiz') {
+          // Sauvegarde spécifique QPUC dans Supabase via quiz-api
+          await call('/api/quiz/score', 'POST', { username: user.name, score: score });
+          h += `<p style="color:var(--success); font-weight:bold;">✅ Score QPUC enregistré dans Supabase !</p>`;
+        } else if (user.token) {
+          // Sauvegarde standard pour les autres jeux
+          await call('/api/scores/score', 'POST', {game:currentGame, score:score});
+          h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré dans le classement !</p>`;
+        }
+      } catch(e) {
+        console.error("Erreur sauvegarde score:", e);
+      }
     }
     
     h += `<div style="margin-top:20px;"><button class="btn" onclick="start(currentGame)">Rejouer</button>
@@ -253,23 +262,78 @@
     renderPendu(); 
   }
 
-  // JEU : QUIZ
+  // JEU : QUIZ (Mode QPUC)
+  let clueInterval = null;
+  let currentClueIdx = 0;
+
   function renderQuiz() {
-    document.getElementById('game-content').innerHTML = `
-      <h2 style="margin-top:0">Quiz Cloud</h2>
-      <div style="background:#0f172a; padding:20px; border-radius:10px; margin-bottom:20px; width:100%;">
-        <p style="font-size:1.4rem; margin:0;">${state.question}</p>
+    const area = document.getElementById('game-content');
+    currentClueIdx = 0;
+    if (clueInterval) clearInterval(clueInterval);
+
+    let html = `
+      <h2 style="margin-top:0">QPUC : Cloud Edition</h2>
+      <div style="background:var(--accent); color:#0f172a; padding:5px 15px; border-radius:20px; font-weight:bold; margin-bottom:15px; display:inline-block;">
+        Thème : ${state.theme || 'Général'}
       </div>
-      <input type="text" id="ans" placeholder="Ta réponse..." autofocus>
-      <button class="btn" style="width:100%" onclick="checkQ()">Envoyer la réponse</button>
+      <div id="clues-container" style="background:#0f172a; padding:20px; border-radius:10px; margin-bottom:20px; width:100%; min-height:150px; text-align:left;">
+        <p id="current-question" style="font-size:1.2rem; color:var(--muted); border-bottom:1px solid #334155; padding-bottom:10px; margin-bottom:10px;">
+          ${state.round === 3 ? 'Écoutez bien les indices...' : state.question}
+        </p>
+        <ul id="clues-list" style="list-style:none; padding:0; font-size:1.1rem; font-weight:600;"></ul>
+      </div>
+      <div id="quiz-actions" style="width:100%">
+        <button id="buzzer" class="btn" style="width:100%; height:80px; font-size:1.5rem; background:var(--error); color:white; box-shadow:0 6px 0 #b91c1c;" onclick="buzz()">BUZZER !</button>
+      </div>
+      <div id="quiz-input" style="display:none; width:100%">
+        <input type="text" id="ans" placeholder="Ta réponse..." autofocus style="font-size:1.2rem; text-align:center;">
+        <button class="btn" style="width:100%" onclick="checkQ()">Valider ma réponse</button>
+      </div>
     `;
+    area.innerHTML = html;
+
+    if (state.round === 3 && state.clues && state.clues.length > 0) {
+      clueInterval = setInterval(() => {
+        if (currentClueIdx < state.clues.length) {
+          const list = document.getElementById('clues-list');
+          const li = document.createElement('li');
+          li.style.marginBottom = "8px";
+          li.style.animation = "fadeIn 0.5s";
+          li.innerHTML = `👉 ${state.clues[currentClueIdx]}`;
+          list.appendChild(li);
+          currentClueIdx++;
+        } else {
+          clearInterval(clueInterval);
+        }
+      }, 3000);
+    }
+  }
+
+  function buzz() {
+    if (clueInterval) clearInterval(clueInterval);
+    document.getElementById('quiz-actions').style.display = 'none';
+    document.getElementById('quiz-input').style.display = 'block';
+    document.getElementById('ans').focus();
     document.getElementById('ans').addEventListener('keypress', e => { if(e.key === 'Enter') checkQ(); });
   }
+
   function checkQ() {
     const a = document.getElementById('ans').value.toLowerCase().trim();
     if(!a) return;
-    if(a === state.answer.toLowerCase()) { notify("Bonne réponse ! +100 pts"); end(100); }
-    else { notify("Faux ! La réponse était : " + state.answer, true); end(0); }
+    
+    const correct = state.answer.toLowerCase();
+    if(a === correct) {
+      // Calcul des points : plus on répond vite (moins d'indices), plus on gagne
+      let finalScore = state.points || 10;
+      if (state.round === 3) {
+        finalScore = Math.max(2, 11 - currentClueIdx);
+      }
+      notify(`Top ! Bonne réponse : ${state.answer} (+${finalScore} pts)`, false);
+      end(finalScore);
+    } else {
+      notify("Faux ! La réponse était : " + state.answer, true);
+      end(0);
+    }
   }
 
   // JEU : PUISSANCE 4
