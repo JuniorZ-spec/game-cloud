@@ -61,11 +61,16 @@
     
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th { text-align: left; color: var(--muted); padding: 10px; border-bottom: 1px solid #334155; }
-    td { padding: 12px 10px; border-bottom: 1px solid #1e293b; }
-  </style>
-</head>
-<body>
+    <style>
+    ...
+      td { padding: 12px 10px; border-bottom: 1px solid #1e293b; }
 
+      .room-badge { background: var(--success); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px; }
+    </style>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    </head>
+    <body>
+    ...
 <div id="msg"></div>
 
 <div class="container">
@@ -262,78 +267,178 @@
     renderPendu(); 
   }
 
-  // JEU : QUIZ (Mode QPUC)
+  // --- JEU : QUIZ QPUC (Solo & Réseau) ---
+  let socket = null;
+  let roomCode = null;
   let clueInterval = null;
   let currentClueIdx = 0;
+  let iaTimer = null;
 
   function renderQuiz() {
     const area = document.getElementById('game-content');
-    currentClueIdx = 0;
     if (clueInterval) clearInterval(clueInterval);
+    if (iaTimer) clearTimeout(iaTimer);
 
-    let html = `
+    area.innerHTML = `
       <h2 style="margin-top:0">QPUC : Cloud Edition</h2>
-      <div style="background:var(--accent); color:#0f172a; padding:5px 15px; border-radius:20px; font-weight:bold; margin-bottom:15px; display:inline-block;">
-        Thème : ${state.theme || 'Général'}
+      <div id="quiz-mode-select">
+        <p>Choisis ton mode de jeu :</p>
+        <button class="btn" onclick="startSoloQuiz()">👤 Jouer contre l'IA</button>
+        <button class="btn btn-secondary" onclick="showLobby()">🌐 Jouer en Réseau</button>
       </div>
-      <div id="clues-container" style="background:#0f172a; padding:20px; border-radius:10px; margin-bottom:20px; width:100%; min-height:150px; text-align:left;">
-        <p id="current-question" style="font-size:1.2rem; color:var(--muted); border-bottom:1px solid #334155; padding-bottom:10px; margin-bottom:10px;">
-          ${state.round === 3 ? 'Écoutez bien les indices...' : state.question}
-        </p>
-        <ul id="clues-list" style="list-style:none; padding:0; font-size:1.1rem; font-weight:600;"></ul>
+      <div id="quiz-arena" style="display:none; width:100%">
+        <div id="quiz-header" style="margin-bottom:15px;"></div>
+        <div id="clues-container" style="background:#0f172a; padding:20px; border-radius:10px; margin-bottom:20px; width:100%; min-height:150px; text-align:left;">
+          <p id="current-question" style="font-size:1.2rem; color:var(--muted); border-bottom:1px solid #334155; padding-bottom:10px; margin-bottom:10px;">En attente...</p>
+          <ul id="clues-list" style="list-style:none; padding:0; font-size:1.1rem; font-weight:600;"></ul>
+        </div>
+        <div id="quiz-actions" style="width:100%">
+          <button id="buzzer" class="btn" style="width:100%; height:80px; font-size:1.5rem; background:var(--error); color:white; box-shadow:0 6px 0 #b91c1c;" onclick="handleBuzz()">BUZZER !</button>
+        </div>
+        <div id="quiz-input" style="display:none; width:100%">
+          <input type="text" id="ans" placeholder="Ta réponse..." autofocus style="font-size:1.2rem; text-align:center;">
+          <button class="btn" style="width:100%" onclick="submitQuizAnswer()">Valider ma réponse</button>
+        </div>
       </div>
-      <div id="quiz-actions" style="width:100%">
-        <button id="buzzer" class="btn" style="width:100%; height:80px; font-size:1.5rem; background:var(--error); color:white; box-shadow:0 6px 0 #b91c1c;" onclick="buzz()">BUZZER !</button>
-      </div>
-      <div id="quiz-input" style="display:none; width:100%">
-        <input type="text" id="ans" placeholder="Ta réponse..." autofocus style="font-size:1.2rem; text-align:center;">
-        <button class="btn" style="width:100%" onclick="checkQ()">Valider ma réponse</button>
+      <div id="quiz-lobby" style="display:none; width:100%">
+        <h3 id="lobby-title">Salon Multijoueur</h3>
+        <div id="lobby-actions">
+           <button class="btn" onclick="createRoom()">Créer un salon</button>
+           <input type="text" id="join-code" placeholder="Code du salon (ex: ABCD)" style="text-align:center">
+           <button class="btn btn-secondary" onclick="joinRoom()">Rejoindre</button>
+        </div>
+        <div id="lobby-players" style="margin-top:20px;"></div>
+        <button id="start-btn" class="btn" style="display:none; margin-top:20px;" onclick="socket.emit('start_game', roomCode)">Lancer la partie</button>
       </div>
     `;
-    area.innerHTML = html;
+  }
 
-    if (state.round === 3 && state.clues && state.clues.length > 0) {
+  // --- LOGIQUE SOLO (VS IA) ---
+  async function startSoloQuiz() {
+    document.getElementById('quiz-mode-select').style.display = 'none';
+    document.getElementById('quiz-arena').style.display = 'block';
+    
+    state = await call('/api/quiz/question');
+    document.getElementById('quiz-header').innerHTML = `<span class="user-badge">Mode Solo</span> <span class="room-badge">Thème : ${state.theme}</span>`;
+    document.getElementById('current-question').textContent = state.round === 3 ? "Écoutez bien les indices..." : state.question;
+    
+    currentClueIdx = 0;
+    if (state.round === 3) {
       clueInterval = setInterval(() => {
         if (currentClueIdx < state.clues.length) {
-          const list = document.getElementById('clues-list');
-          const li = document.createElement('li');
-          li.style.marginBottom = "8px";
-          li.style.animation = "fadeIn 0.5s";
-          li.innerHTML = `👉 ${state.clues[currentClueIdx]}`;
-          list.appendChild(li);
+          addClueUI(state.clues[currentClueIdx]);
           currentClueIdx++;
-        } else {
-          clearInterval(clueInterval);
-        }
+        } else { clearInterval(clueInterval); }
       }, 3000);
+
+      // IA buzz au bout de 4 indices si le joueur ne le fait pas
+      iaTimer = setTimeout(() => {
+        if (!document.getElementById('quiz-input').offsetParent) { // Si le joueur n'a pas buzze
+          clearInterval(clueInterval);
+          notify("L'IA a buzzé avant toi !", true);
+          end(0);
+        }
+      }, 12000); 
     }
   }
 
-  function buzz() {
-    if (clueInterval) clearInterval(clueInterval);
+  // --- LOGIQUE RÉSEAU (SOCKET.IO) ---
+  function initSocket() {
+    if (socket) return;
+    socket = io(); // Se connecte sur le host actuel (gamecloud.local)
+    
+    socket.on("room_created", (code) => {
+      roomCode = code;
+      document.getElementById('lobby-title').innerHTML = `Salon : <span style="color:var(--accent)">${code}</span>`;
+      document.getElementById('lobby-actions').style.display = 'none';
+      document.getElementById('start-btn').style.display = 'inline-block';
+    });
+
+    socket.on("players_update", (players) => {
+      document.getElementById('lobby-players').innerHTML = "Joueurs : " + players.map(p => p.username).join(", ");
+    });
+
+    socket.on("game_started", (data) => {
+      document.getElementById('quiz-lobby').style.display = 'none';
+      document.getElementById('quiz-arena').style.display = 'block';
+      document.getElementById('quiz-header').innerHTML = `<span class="user-badge">Salon ${roomCode}</span> <span class="room-badge">${data.theme}</span>`;
+      document.getElementById('current-question').textContent = data.initialQuestion;
+      document.getElementById('clues-list').innerHTML = "";
+    });
+
+    socket.on("clue", (clue) => {
+      addClueUI(clue);
+      currentClueIdx++;
+    });
+
+    socket.on("player_buzzed", (data) => {
+      if (clueInterval) clearInterval(clueInterval);
+      document.getElementById('quiz-actions').style.display = 'none';
+      notify(`${data.username} a pris la main !`, data.id !== socket.id);
+      if (data.id !== socket.id) {
+        document.getElementById('current-question').textContent = "Attends la réponse de " + data.username;
+      }
+    });
+
+    socket.on("answer_result", (data) => {
+      if (data.isCorrect) {
+        notify(`${data.player} a trouvé la réponse ! (${data.correctAnswer})`, false);
+        end(data.points);
+      } else {
+        notify(`${data.player} s'est trompé !`, true);
+        document.getElementById('quiz-actions').style.display = 'block'; // On redonne le buzzer aux autres
+      }
+    });
+  }
+
+  function showLobby() {
+    initSocket();
+    document.getElementById('quiz-mode-select').style.display = 'none';
+    document.getElementById('quiz-lobby').style.display = 'block';
+  }
+
+  function createRoom() { socket.emit("create_room", user.name); }
+  function joinRoom() { 
+    roomCode = document.getElementById('join-code').value.toUpperCase();
+    socket.emit("join_room", { roomCode, username: user.name });
+    document.getElementById('lobby-title').innerHTML = `Salon : <span style="color:var(--accent)">${roomCode}</span>`;
+    document.getElementById('lobby-actions').style.display = 'none';
+  }
+
+  function handleBuzz() {
+    if (socket && roomCode) {
+      socket.emit("buzz", roomCode);
+    } else {
+      // Solo
+      if (clueInterval) clearInterval(clueInterval);
+      if (iaTimer) clearTimeout(iaTimer);
+      buzzUI();
+    }
+  }
+
+  function buzzUI() {
     document.getElementById('quiz-actions').style.display = 'none';
     document.getElementById('quiz-input').style.display = 'block';
     document.getElementById('ans').focus();
-    document.getElementById('ans').addEventListener('keypress', e => { if(e.key === 'Enter') checkQ(); });
+    document.getElementById('ans').addEventListener('keypress', e => { if(e.key === 'Enter') submitQuizAnswer(); });
   }
 
-  function checkQ() {
-    const a = document.getElementById('ans').value.toLowerCase().trim();
-    if(!a) return;
-    
-    const correct = state.answer.toLowerCase();
-    if(a === correct) {
-      // Calcul des points : plus on répond vite (moins d'indices), plus on gagne
-      let finalScore = state.points || 10;
-      if (state.round === 3) {
-        finalScore = Math.max(2, 11 - currentClueIdx);
-      }
-      notify(`Top ! Bonne réponse : ${state.answer} (+${finalScore} pts)`, false);
-      end(finalScore);
+  function submitQuizAnswer() {
+    const a = document.getElementById('ans').value.trim();
+    if (socket && roomCode) {
+      socket.emit("submit_answer", { roomCode, answer: a });
     } else {
-      notify("Faux ! La réponse était : " + state.answer, true);
-      end(0);
+      checkQ(); // Solo
     }
+  }
+
+  function addClueUI(clue) {
+    const list = document.getElementById('clues-list');
+    const li = document.createElement('li');
+    li.style.marginBottom = "8px";
+    li.style.animation = "fadeIn 0.5s";
+    li.innerHTML = `👉 ${clue}`;
+    list.appendChild(li);
   }
 
   // JEU : PUISSANCE 4
