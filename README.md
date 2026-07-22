@@ -128,6 +128,7 @@ kubectl apply -f k8s/ingress/ingress-keda.yaml
 
 - [TP complet GameCloud](docs/TP_GAMECLOUD_COMPLET.md)
 - [TP KEDA et scale-to-zero](docs/TP_GAMECLOUD_KEDA.md)
+- [Retour d'experience DevOps](docs/RETOUR_EXPERIENCE.md)
 
 ## Coherence avec ESGIS CAMPUS
 
