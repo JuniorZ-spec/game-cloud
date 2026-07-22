@@ -16,7 +16,8 @@ const io = new Server(httpServer, {
 // --- Supabase (optional - falls back to mock data if not configured) ---
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+let supabase = null;
+try { if (supabaseUrl && supabaseKey) supabase = createClient(supabaseUrl, supabaseKey); } catch(e) { console.log('Supabase disabled:', e.message); }
 
 // --- Mock questions for TP (when Supabase is not configured) ---
 const mockQuestions = [

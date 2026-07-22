@@ -19,6 +19,10 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+*.backup
+current-frontend.txt
+body.json
+score.json
 
 # Python
 __pycache__/

@@ -6,20 +6,11 @@ metadata:
 spec:
   hosts:
     - gamecloud.local
-
-  pathPrefixes:
-    - /api/scores           # Routes concernées par ce ScaledObject
-
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: score-api          # Le Deployment à scaler
-    service: score-service   # Service K8s associé
+    name: score-api
+    service: score-service
     port: 80
-
   replicas:
-    min: 0                   # Scale TO ZERO quand inactif
-    max: 5                   # Max 5 pods sous forte charge
-
-  scaledownPeriod: 120      # Secondes d'inactivité avant scale-down
-                             # 120s = 2 minutes sans requête → 0 pod
+    min: 0
+    max: 5
+  scaledownPeriod: 120

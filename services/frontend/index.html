@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,270 +15,491 @@
       --success: #22c55e;
       --error: #ef4444;
     }
-    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-    body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; overflow-x: hidden; }
-    
-    .container { max-width: 800px; margin: 0 auto; }
-    
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 15px; }
-    .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); cursor: pointer; text-decoration: none; }
-    
-    .user-badge { background: #334155; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; }
 
-    .section { display: none; animation: fadeIn 0.3s; }
-    .section.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-    .login-box { background: var(--card); padding: 2.5rem; border-radius: 16px; text-align: center; max-width: 400px; margin: 60px auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
-    input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 1rem; outline: none; }
-    input:focus { border-color: var(--accent); }
-    
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
-    .game-card { background: var(--card); padding: 25px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; text-align: center; display: flex; flex-direction: column; align-items: center; }
-    .game-card:hover { border-color: var(--accent); transform: translateY(-5px); background: #26334d; }
-    .game-card h3 { margin: 10px 0 5px 0; }
-    .game-card p { margin: 0; font-size: 0.85rem; color: var(--muted); }
-
-    .game-area { background: var(--card); padding: 30px; border-radius: 15px; text-align: center; min-height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .btn { background: var(--accent); color: #0f172a; border: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; }
-    .btn:hover { opacity: 0.9; transform: scale(1.02); }
-    .btn-secondary { background: #475569; color: white; margin-left: 5px; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .word { font-size: 3rem; letter-spacing: 12px; margin: 30px; font-family: 'Courier New', monospace; font-weight: bold; color: var(--accent); }
-    .p4-grid { display: inline-grid; grid-template-columns: repeat(7, 40px); gap: 8px; background: #1e40af; padding: 12px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.2); }
-    .p4-cell { width: 40px; height: 40px; background: var(--bg); border-radius: 50%; cursor: pointer; transition: 0.2s; }
-    .p4-cell:hover { background: #1e293b; }
-    .p4-cell.p1 { background: #ef4444; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-    .p4-cell.p2 { background: #eab308; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-    
-    .mem-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 320px; margin: 0 auto; }
-    .mem-card { aspect-ratio: 1/1; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; transition: 0.3s transform; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .mem-card:hover { transform: scale(1.05); }
-    .mem-card.flipped { background: #334155; transform: rotateY(180deg); }
-    .mem-card.found { background: var(--success); cursor: default; transform: none; }
-
-    #msg { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 25px; border-radius: 30px; display: none; z-index: 1000; font-weight: bold; box-shadow: 0 10px 15px rgba(0,0,0,0.2); }
-    
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th { text-align: left; color: var(--muted); padding: 10px; border-bottom: 1px solid #334155; }
-    td { padding: 12px 10px; border-bottom: 1px solid #1e293b; }
-
-    .room-badge { background: var(--success); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px; }
-  </style>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    </head>
-    <body>
-    ...
-<div id="msg"></div>
-
-<div class="container">
-  <header>
-    <a href="#" class="logo" onclick="showSection('home'); return false;">GameCloud Arcade</a>
-    <div id="user-info" class="user-badge">Invité</div>
-  </header>
-
-  <!-- Section Login -->
-  <section id="sec-login" class="section active">
-    <div class="login-box">
-      <h2 style="margin-top:0">Bienvenue !</h2>
-      <p style="color:var(--muted)">Entre ton pseudo pour enregistrer tes scores.</p>
-      <input type="text" id="username" placeholder="Pseudo" maxlength="15">
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn" onclick="login()">Se connecter & Jouer</button>
-        <button class="btn btn-secondary" onclick="guestPlay()">Jouer sans compte</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Menu principal -->
-  <section id="sec-home" class="section">
-    <h2 style="text-align:center; margin-bottom:30px;">Choisis ton défi 🚀</h2>
-    <div class="grid">
-      <div class="game-card" onclick="start('pendu')"><span style="font-size:3rem">🪑</span><h3>Le Pendu</h3><p>Devine le mot secret</p></div>
-      <div class="game-card" onclick="start('quiz')"><span style="font-size:3rem">❓</span><h3>Cloud Quiz</h3><p>Test tes connaissances</p></div>
-      <div class="game-card" onclick="start('p4')"><span style="font-size:3rem">🔴</span><h3>Puissance 4</h3><p>Contre l'ordinateur</p></div>
-      <div class="game-card" onclick="start('memory')"><span style="font-size:3rem">🧠</span><h3>Memory</h3><p>Trouve les paires</p></div>
-    </div>
-    <div style="margin-top: 40px; text-align: center; display: flex; justify-content: center; gap: 10px;">
-      <button class="btn btn-secondary" onclick="showSection('leaderboard')">🏆 Classement</button>
-      <button class="btn btn-secondary" onclick="showSection('health')">⚙️ Status</button>
-      <button class="btn btn-secondary" onclick="location.reload()">🔄 Déconnexion</button>
-    </div>
-  </section>
-
-  <!-- Zone de jeu -->
-  <section id="sec-play" class="section">
-    <div class="game-area" id="game-content"></div>
-    <div style="text-align: center; margin-top: 30px;">
-      <button class="btn btn-secondary" onclick="showSection('home')">↩ Quitter la partie</button>
-    </div>
-  </section>
-
-  <!-- Leaderboard -->
-  <section id="sec-leaderboard" class="section">
-    <div style="display:flex; justify-content:space-between; align-items:center">
-        <h2>🏆 Meilleurs scores</h2>
-        <button class="btn btn-secondary" onclick="loadLeaderboard()">Actualiser</button>
-    </div>
-    <div id="leaderboard-data" style="background: var(--card); padding: 10px 20px; border-radius: 12px;"></div>
-    <button class="btn" onclick="showSection('home')" style="margin-top: 20px; width:100%">Retour au menu</button>
-  </section>
-
-  <!-- Health -->
-  <section id="sec-health" class="section">
-    <h2>⚙️ État des micro-services</h2>
-    <div id="health-data" class="grid" style="grid-template-columns: 1fr 1fr;"></div>
-    <button class="btn" onclick="showSection('home')" style="margin-top: 20px; width:100%">Retour au menu</button>
-  </section>
-</div>
-
-<script>
-  let user = { token: null, name: 'Invité' };
-  let currentGame = null;
-  let state = null;
-  let isMoving = false; // Sécurité pour P4
-
-  function showSection(id) {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById('sec-' + id).classList.add('active');
-    if(id === 'leaderboard') loadLeaderboard();
-    if(id === 'health') checkHealth();
-    // Reset local state if needed
-    isMoving = false;
-  }
-
-  function notify(m, err=false) {
-    const el = document.getElementById('msg');
-    el.textContent = m;
-    el.style.background = err ? 'var(--error)' : 'var(--success)';
-    el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', 2500);
-  }
-
-  async function call(path, method='GET', body=null) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
-    if(user.token) opts.headers['Authorization'] = 'Bearer ' + user.token;
-    if(body) opts.body = JSON.stringify(body);
-    try {
-      const r = await fetch(path, opts);
-      const d = await r.json();
-      if(!r.ok) throw d.error || 'Erreur API';
-      return d;
-    } catch(e) { 
-      if(path.includes('healthz')) throw e; // Silence for health checks
-      notify(e, true); throw e; 
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', system-ui, sans-serif;
     }
-  }
 
-  // --- Authentification ---
-  async function login() {
-    const name = document.getElementById('username').value.trim();
-    if(!name) return notify("Choisis un pseudo !", true);
-    
-    try {
-      // Stratégie "Frictionless" : tente de créer le compte, ignore si erreur (déjà existant)
-      await fetch('/api/auth/register', { 
-        method:'POST', 
-        headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({username:name, password:'password123'}) 
-      });
-      
-      const res = await call('/api/auth/login', 'POST', {username:name, password:'password123'});
-      user = { token: res.token, name: name };
-      document.getElementById('user-info').textContent = '👤 ' + name;
-      notify("Bienvenue " + name + " !");
-      showSection('home');
-    } catch(e) {
-        // Le compte existe probablement déjà, on ne fait rien et on laisse le prochain try gérer le login
+    body {
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      overflow-x: hidden;
     }
-  }
 
-  function guestPlay() {
-    user = { token: null, name: 'Invité' };
-    document.getElementById('user-info').textContent = '👤 Invité';
-    showSection('home');
-  }
-
-  // --- Gestion des Jeux ---
-  async function start(type) {
-    currentGame = type;
-    showSection('play');
-    const area = document.getElementById('game-content');
-    area.innerHTML = '<h3>Initialisation du service...</h3>';
-    
-    try {
-      if(type === 'pendu') { state = await call('/api/pendu/game/start', 'POST'); renderPendu(); }
-      if(type === 'quiz') { state = await call('/api/quiz/question'); renderQuiz(); }
-      if(type === 'p4') { state = await call('/api/p4/game/start', 'POST'); renderP4(); }
-      if(type === 'memory') { state = await call('/api/memory/session/start', 'POST'); renderMem(); }
-    } catch(e) { 
-        area.innerHTML = `<h3 style="color:var(--error)">Le service ${type} ne répond pas.</h3><p>Vérifie l'état des pods.</p>`; 
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
     }
-  }
 
-  async function end(score) {
-    if (clueInterval) clearInterval(clueInterval); // Arrêt du timer Questions pour ESGIS
-    const area = document.getElementById('game-content');
-    let h = `<h2 style="font-size:2.5rem; margin-bottom:10px;">${score > 0 ? 'Bravo ! 🎉' : 'Dommage... 💀'}</h2>
-             <p style="font-size:1.5rem">Ton score : <strong>${score}</strong></p>`;
-    
-    // Sauvegarde du score
-    if(score > 0) {
-      try {
-        if (currentGame === 'quiz') {
-          // Sauvegarde spécifique Questions pour ESGIS dans Supabase via quiz-api
-          await call('/api/quiz/score', 'POST', { username: user.name, score: score });
-          h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré dans Supabase !</p>`;
-        } else if (user.token) {
-          // Sauvegarde standard pour les autres jeux
-          await call('/api/scores/score', 'POST', {game:currentGame, score:score});
-          h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré dans le classement !</p>`;
-        }
-      } catch(e) {
-        console.error("Erreur sauvegarde score:", e);
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 15px;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .user-badge {
+      background: #334155;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .section {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
     }
-    
-    h += `<div style="margin-top:20px;"><button class="btn" onclick="start(currentGame)">Rejouer</button>
-          <button class="btn btn-secondary" onclick="showSection('home')">Menu Principal</button></div>`;
-    area.innerHTML = h;
-  }
 
-  // JEU : PENDU
-  function renderPendu() {
-    document.getElementById('game-content').innerHTML = `
+    .login-box {
+      background: var(--card);
+      padding: 2.5rem;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 400px;
+      margin: 60px auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 15px 0;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+    }
+
+    .game-card {
+      background: var(--card);
+      padding: 25px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: 0.2s;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .game-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-5px);
+      background: #26334d;
+    }
+
+    .game-card h3 {
+      margin: 10px 0 5px 0;
+    }
+
+    .game-card p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .game-area {
+      background: var(--card);
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      min-height: 350px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 1rem;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+
+    .btn-secondary {
+      background: #475569;
+      color: white;
+      margin-left: 5px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .word {
+      font-size: 3rem;
+      letter-spacing: 12px;
+      margin: 30px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    .p4-grid {
+      display: inline-grid;
+      grid-template-columns: repeat(7, 40px);
+      gap: 8px;
+      background: #1e40af;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .p4-cell {
+      width: 40px;
+      height: 40px;
+      background: var(--bg);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .p4-cell:hover {
+      background: #1e293b;
+    }
+
+    .p4-cell.p1 {
+      background: #ef4444;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .p4-cell.p2 {
+      background: #eab308;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .mem-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    .mem-card {
+      aspect-ratio: 1/1;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: 0.3s transform;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .mem-card:hover {
+      transform: scale(1.05);
+    }
+
+    .mem-card.flipped {
+      background: #334155;
+      transform: rotateY(180deg);
+    }
+
+    .mem-card.found {
+      background: var(--success);
+      cursor: default;
+      transform: none;
+    }
+
+    #msg {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 25px;
+      border-radius: 30px;
+      display: none;
+      z-index: 1000;
+      font-weight: bold;
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--muted);
+      padding: 10px;
+      border-bottom: 1px solid #334155;
+    }
+
+    td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .room-badge {
+      background: var(--success);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-left: 10px;
+    }
+  </style>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+
+<body>
+  <div id="msg"></div>
+  <div class="container">
+    <header>
+      <a href="#" class="logo" onclick="showSection('home'); return false;">GameCloud Arcade</a>
+      <div id="user-info" class="user-badge">Invité</div>
+    </header>
+
+    <section id="sec-login" class="section active">
+      <div class="login-box">
+        <h2 style="margin-top:0">Bienvenue !</h2>
+        <p style="color:var(--muted)">Entre ton pseudo pour enregistrer tes scores.</p>
+        <input type="text" id="username" placeholder="Pseudo" maxlength="15">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button class="btn" onclick="login()">Se connecter & Jouer</button>
+          <button class="btn btn-secondary" onclick="guestPlay()">Jouer sans compte</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-home" class="section">
+      <h2 style="text-align:center; margin-bottom:30px;">Choisis ton défi 🎮</h2>
+      <div class="grid">
+        <div class="game-card" onclick="start('pendu')"><span style="font-size:3rem">🪑</span>
+          <h3>Le Pendu</h3>
+          <p>Devine le mot secret</p>
+        </div>
+        <div class="game-card" onclick="start('quiz')"><span style="font-size:3rem">❓</span>
+          <h3>Cloud Quiz</h3>
+          <p>Test tes connaissances</p>
+        </div>
+        <div class="game-card" onclick="start('p4')"><span style="font-size:3rem">🔴</span>
+          <h3>Puissance 4</h3>
+          <p>Contre l'ordinateur</p>
+        </div>
+        <div class="game-card" onclick="start('memory')"><span style="font-size:3rem">🧠</span>
+          <h3>Memory</h3>
+          <p>Trouve les paires</p>
+        </div>
+      </div>
+      <div style="margin-top: 40px; text-align: center; display: flex; justify-content: center; gap: 10px;">
+        <button class="btn btn-secondary" onclick="showSection('leaderboard')">🏆 Classement</button>
+        <button class="btn btn-secondary" onclick="showSection('health')">⚙️ Status</button>
+        <button class="btn btn-secondary" onclick="location.reload()">🔄 Déconnexion</button>
+      </div>
+    </section>
+
+    <section id="sec-play" class="section">
+      <div class="game-area" id="game-content"></div>
+      <div style="text-align: center; margin-top: 30px;">
+        <button class="btn btn-secondary" onclick="showSection('home')">⬅ Quitter la partie</button>
+      </div>
+    </section>
+
+    <section id="sec-leaderboard" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <h2>🏆 Meilleurs scores</h2>
+        <button class="btn btn-secondary" onclick="loadLeaderboard()">Actualiser</button>
+      </div>
+      <div id="leaderboard-data" style="background: var(--card); padding: 10px 20px; border-radius: 12px;"></div>
+      <button class="btn" onclick="showSection('home')" style="margin-top: 20px; width:100%">Retour au menu</button>
+    </section>
+
+    <section id="sec-health" class="section">
+      <h2>⚙️ État des micro-services</h2>
+      <div id="health-data" class="grid" style="grid-template-columns: 1fr 1fr;"></div>
+      <button class="btn" onclick="showSection('home')" style="margin-top: 20px; width:100%">Retour au menu</button>
+    </section>
+  </div>
+
+  <script>
+    let user = { token: null, name: 'Invité' };
+    let currentGame = null;
+    let state = null;
+    let isMoving = false;
+
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById('sec-' + id).classList.add('active');
+      if (id === 'leaderboard') loadLeaderboard();
+      if (id === 'health') checkHealth();
+      isMoving = false;
+    }
+
+    function notify(m, err = false) {
+      const el = document.getElementById('msg');
+      el.textContent = m;
+      el.style.background = err ? 'var(--error)' : 'var(--success)';
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 2500);
+    }
+
+    async function call(path, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (user.token) opts.headers['Authorization'] = 'Bearer ' + user.token;
+      if (body) opts.body = JSON.stringify(body);
+      try {
+        const r = await fetch(path, opts);
+        const d = await r.json();
+        if (!r.ok) throw d.error || 'Erreur API';
+        return d;
+      } catch (e) {
+        if (path.includes('healthz')) throw e;
+        notify(e, true); throw e;
+      }
+    }
+
+    async function login() {
+      const name = document.getElementById('username').value.trim();
+      if (!name) return notify("Choisis un pseudo !", true);
+      try {
+        await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: name, password: 'password123' })
+        });
+        const res = await call('/api/auth/login', 'POST', { username: name, password: 'password123' });
+        user = { token: res.token, name: name };
+        document.getElementById('user-info').textContent = '👤 ' + name;
+        notify("Bienvenue " + name + " !");
+        showSection('home');
+      } catch (e) { }
+    }
+
+    function guestPlay() {
+      user = { token: null, name: 'Invité' };
+      document.getElementById('user-info').textContent = '👤 Invité';
+      showSection('home');
+    }
+
+    async function start(type) {
+      currentGame = type;
+      showSection('play');
+      const area = document.getElementById('game-content');
+      area.innerHTML = '<h3>Initialisation du service...</h3>';
+      try {
+        if (type === 'pendu') { state = await call('/api/pendu/game/start', 'POST'); renderPendu(); }
+        if (type === 'quiz') { state = await call('/api/quiz/question'); renderQuiz(); }
+        if (type === 'p4') { state = await call('/api/p4/game/start', 'POST'); renderP4(); }
+        if (type === 'memory') { state = await call('/api/memory/session/start', 'POST'); renderMem(); }
+      } catch (e) {
+        area.innerHTML = `<h3 style="color:var(--error)">Le service ${type} ne répond pas.</h3><p>Vérifie l'état des pods.</p>`;
+      }
+    }
+
+    async function end(score) {
+      if (clueInterval) clearInterval(clueInterval);
+      if (iaTimer) clearTimeout(iaTimer);
+      const area = document.getElementById('game-content');
+      let h = `<h2 style="font-size:2.5rem; margin-bottom:10px;">${score > 0 ? 'Bravo ! 🎉' : 'Dommage... 😅'}</h2>
+             <p style="font-size:1.5rem">Ton score : <strong>${score}</strong></p>`;
+      if (score > 0) {
+        try {
+          if (currentGame === 'quiz') {
+            await call('/api/quiz/score', 'POST', { username: user.name, score: score });
+            h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré !</p>`;
+          } else if (user.token) {
+            await call('/api/scores/score', 'POST', { game: currentGame, score: score });
+            h += `<p style="color:var(--success); font-weight:bold;">✅ Score enregistré dans le classement !</p>`;
+          }
+        } catch (e) { console.error("Erreur sauvegarde score:", e); }
+      }
+      h += `<div style="margin-top:20px;"><button class="btn" onclick="start(currentGame)">Rejouer</button>
+          <button class="btn btn-secondary" onclick="showSection('home')">Menu Principal</button></div>`;
+      area.innerHTML = h;
+    }
+
+    // JEU : PENDU
+    function renderPendu() {
+      document.getElementById('game-content').innerHTML = `
       <h2 style="margin-top:0">Le Pendu</h2>
       <div class="word">${state.masked_word}</div>
       <p style="font-size:1.2rem">Chances restantes : <strong style="color:var(--error)">${state.attempts_left}</strong></p>
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(35px, 1fr)); gap:8px; width:100%; max-width:500px;">
         ${'abcdefghijklmnopqrstuvwxyz'.split('').map(l => `
-            <button class="btn-secondary" style="padding:10px 5px; margin:0;" 
-                    onclick="guessP('${l}')" ${state.guesses.includes(l)?'disabled':''}>${l.toUpperCase()}</button>
+            <button class="btn-secondary" style="padding:10px 5px; margin:0;"
+                    onclick="guessP('${l}')" ${state.guesses.includes(l) ? 'disabled' : ''}>${l.toUpperCase()}</button>
         `).join('')}
-      </div>
-    `;
-    if(state.won) end(state.attempts_left * 20);
-    if(state.lost) end(0);
-  }
-  async function guessP(l) { 
-    state = await call(`/api/pendu/game/${state.id}/guess`, 'POST', {letter:l}); 
-    renderPendu(); 
-  }
+      </div>`;
+      if (state.won) end(state.attempts_left * 20);
+      if (state.lost) end(0);
+    }
+    async function guessP(l) {
+      state = await call(`/api/pendu/game/${state.id}/guess`, 'POST', { letter: l });
+      renderPendu();
+    }
 
-  // --- JEU : QUIZ Questions pour ESGIS (Solo & Réseau) ---
-  let socket = null;
-  let roomCode = null;
-  let clueInterval = null;
-  let currentClueIdx = 0;
-  let iaTimer = null;
+    // JEU : QUIZ
+    let socket = null;
+    let roomCode = null;
+    let clueInterval = null;
+    let currentClueIdx = 0;
+    let iaTimer = null;
 
-  function renderQuiz() {
-    const area = document.getElementById('game-content');
-    if (clueInterval) clearInterval(clueInterval);
-    if (iaTimer) clearTimeout(iaTimer);
-
-    area.innerHTML = `
+    function renderQuiz() {
+      const area = document.getElementById('game-content');
+      if (clueInterval) clearInterval(clueInterval);
+      if (iaTimer) clearTimeout(iaTimer);
+      area.innerHTML = `
       <h2 style="margin-top:0">Questions pour ESGIS : Cloud Edition</h2>
       <div id="quiz-mode-select">
         <p>Choisis ton mode de jeu :</p>
@@ -312,246 +534,217 @@
         </div>
         <div id="lobby-players" style="margin-top:20px;"></div>
         <button id="start-btn" class="btn" style="display:none; margin-top:20px;" onclick="socket.emit('start_game', roomCode)">Lancer la partie</button>
-      </div>
-    `;
-  }
-
-  // --- LOGIQUE SOLO (VS IA) ---
-  async function startSoloQuiz() {
-    document.getElementById('quiz-mode-select').style.display = 'none';
-    document.getElementById('quiz-arena').style.display = 'block';
-    
-    state = await call('/api/quiz/question');
-    document.getElementById('quiz-header').innerHTML = `<span class="user-badge">Mode Solo</span> <span class="room-badge">Thème : ${state.theme}</span>`;
-    document.getElementById('current-question').textContent = state.round === 3 ? "Écoutez bien les indices..." : state.question;
-    
-    currentClueIdx = 0;
-    if (state.round === 3) {
-      clueInterval = setInterval(() => {
-        if (currentClueIdx < state.clues.length) {
-          addClueUI(state.clues[currentClueIdx]);
-          currentClueIdx++;
-        } else { clearInterval(clueInterval); }
-      }, 3000);
-
-      // IA buzz au bout de 4 indices si le joueur ne le fait pas
-      iaTimer = setTimeout(() => {
-        if (!document.getElementById('quiz-input').offsetParent) { // Si le joueur n'a pas buzze
-          clearInterval(clueInterval);
-          notify("L'IA a buzzé avant toi !", true);
-          end(0);
-        }
-      }, 12000); 
+      </div>`;
     }
-  }
 
-  // --- LOGIQUE RÉSEAU (SOCKET.IO) ---
-  function connectToRemote() {
-    const ip = document.getElementById('server-ip').value.trim();
-    const target = ip ? `http://${ip}` : ''; // Vide = host actuel
-    
-    initSocket(target);
-    document.getElementById('lobby-actions').style.display = 'block';
-    notify(ip ? `Connecté au serveur de ${ip}` : "Connecté au serveur local");
-  }
-
-  function initSocket(target = '') {
-    if (socket) socket.disconnect(); // Reset si déjà existant
-    
-    socket = io(target); 
-    
-    socket.on("room_created", (code) => {
-      roomCode = code;
-      document.getElementById('lobby-title').innerHTML = `Salon : <span style="color:var(--accent)">${code}</span>`;
-      document.getElementById('lobby-actions').style.display = 'none';
-      document.getElementById('start-btn').style.display = 'inline-block';
-    });
-
-    socket.on("players_update", (players) => {
-      document.getElementById('lobby-players').innerHTML = "Joueurs : " + players.map(p => p.username).join(", ");
-    });
-
-    socket.on("game_started", (data) => {
-      document.getElementById('quiz-lobby').style.display = 'none';
+    async function startSoloQuiz() {
+      document.getElementById('quiz-mode-select').style.display = 'none';
       document.getElementById('quiz-arena').style.display = 'block';
-      document.getElementById('quiz-header').innerHTML = `<span class="user-badge">Salon ${roomCode}</span> <span class="room-badge">${data.theme}</span>`;
-      document.getElementById('current-question').textContent = data.initialQuestion;
-      document.getElementById('clues-list').innerHTML = "";
-    });
 
-    socket.on("clue", (clue) => {
-      addClueUI(clue);
-      currentClueIdx++;
-    });
+      state = await call('/api/quiz/question');
+      document.getElementById('quiz-header').innerHTML = `<span class="user-badge">Mode Solo</span>`;
+      document.getElementById('current-question').textContent = state.question || "Écoutez bien les indices...";
 
-    socket.on("player_buzzed", (data) => {
-      if (clueInterval) clearInterval(clueInterval);
-      document.getElementById('quiz-actions').style.display = 'none';
-      notify(`${data.username} a pris la main !`, data.id !== socket.id);
-      if (data.id !== socket.id) {
-        document.getElementById('current-question').textContent = "Attends la réponse de " + data.username;
+      currentClueIdx = 0;
+      if (state.clues && state.clues.length > 0) {
+        clueInterval = setInterval(() => {
+          if (currentClueIdx < state.clues.length) {
+            addClueUI(state.clues[currentClueIdx]);
+            currentClueIdx++;
+          } else { clearInterval(clueInterval); }
+        }, 3000);
+
+        iaTimer = setTimeout(() => {
+          if (!document.getElementById('quiz-input').offsetParent) {
+            clearInterval(clueInterval);
+            notify("L'IA a buzzé avant toi !", true);
+            end(0);
+          }
+        }, 12000);
       }
-    });
+    }
 
-    socket.on("answer_result", (data) => {
-      if (data.isCorrect) {
-        notify(`${data.player} a trouvé la réponse ! (${data.correctAnswer})`, false);
-        end(data.points);
+    function connectToRemote() {
+      const ip = document.getElementById('server-ip').value.trim();
+      const target = ip ? `http://${ip}` : '';
+      initSocket(target);
+      document.getElementById('lobby-actions').style.display = 'block';
+      notify(ip ? `Connecté au serveur de ${ip}` : "Connecté au serveur local");
+    }
+
+    function initSocket(target = '') {
+      if (socket) socket.disconnect();
+      socket = io(target);
+
+      socket.on("room_created", (code) => {
+        roomCode = code;
+        document.getElementById('lobby-title').innerHTML = `Salon : <span style="color:var(--accent)">${code}</span>`;
+        document.getElementById('lobby-actions').style.display = 'none';
+        document.getElementById('start-btn').style.display = 'inline-block';
+      });
+      socket.on("players_update", (players) => {
+        document.getElementById('lobby-players').innerHTML = "Joueurs : " + players.map(p => p.username).join(", ");
+      });
+      socket.on("game_started", (data) => {
+        document.getElementById('quiz-lobby').style.display = 'none';
+        document.getElementById('quiz-arena').style.display = 'block';
+        document.getElementById('quiz-header').innerHTML = `<span class="user-badge">Salon ${roomCode}</span> <span class="room-badge">${data.theme || ''}</span>`;
+        document.getElementById('current-question').textContent = data.initialQuestion || data.question || "En attente...";
+        document.getElementById('clues-list').innerHTML = "";
+      });
+      socket.on("clue", (clue) => { addClueUI(clue); currentClueIdx++; });
+      socket.on("player_buzzed", (data) => {
+        if (clueInterval) clearInterval(clueInterval);
+        document.getElementById('quiz-actions').style.display = 'none';
+        notify(`${data.username} a pris la main !`, data.id !== socket.id);
+        if (data.id !== socket.id) {
+          document.getElementById('current-question').textContent = "Attends la réponse de " + data.username;
+        }
+      });
+      socket.on("answer_result", (data) => {
+        if (data.isCorrect) {
+          notify(`${data.player} a trouvé la réponse ! (${data.correctAnswer})`, false);
+          end(data.points);
+        } else {
+          notify(`${data.player} s'est trompé !`, true);
+          document.getElementById('quiz-actions').style.display = 'block';
+        }
+      });
+    }
+
+    function showLobby() {
+      initSocket();
+      document.getElementById('quiz-mode-select').style.display = 'none';
+      document.getElementById('quiz-lobby').style.display = 'block';
+    }
+
+    function createRoom() { socket.emit("create_room", user.name); }
+    function joinRoom() {
+      roomCode = document.getElementById('join-code').value.toUpperCase();
+      socket.emit("join_room", { roomCode, username: user.name });
+      document.getElementById('lobby-title').innerHTML = `Salon : <span style="color:var(--accent)">${roomCode}</span>`;
+      document.getElementById('lobby-actions').style.display = 'none';
+    }
+
+    function handleBuzz() {
+      if (socket && roomCode) {
+        socket.emit("buzz", roomCode);
       } else {
-        notify(`${data.player} s'est trompé !`, true);
-        document.getElementById('quiz-actions').style.display = 'block'; // On redonne le buzzer aux autres
+        if (clueInterval) clearInterval(clueInterval);
+        if (iaTimer) clearTimeout(iaTimer);
+        buzzUI();
       }
-    });
-  }
-
-  function showLobby() {
-    initSocket();
-    document.getElementById('quiz-mode-select').style.display = 'none';
-    document.getElementById('quiz-lobby').style.display = 'block';
-  }
-
-  function createRoom() { socket.emit("create_room", user.name); }
-  function joinRoom() { 
-    roomCode = document.getElementById('join-code').value.toUpperCase();
-    socket.emit("join_room", { roomCode, username: user.name });
-    document.getElementById('lobby-title').innerHTML = `Salon : <span style="color:var(--accent)">${roomCode}</span>`;
-    document.getElementById('lobby-actions').style.display = 'none';
-  }
-
-  function handleBuzz() {
-    if (socket && roomCode) {
-      socket.emit("buzz", roomCode);
-    } else {
-      // Solo
-      if (clueInterval) clearInterval(clueInterval);
-      if (iaTimer) clearTimeout(iaTimer);
-      buzzUI();
     }
-  }
 
-  function buzzUI() {
-    document.getElementById('quiz-actions').style.display = 'none';
-    document.getElementById('quiz-input').style.display = 'block';
-    document.getElementById('ans').focus();
-    document.getElementById('ans').addEventListener('keypress', e => { if(e.key === 'Enter') submitQuizAnswer(); });
-  }
-
-  function submitQuizAnswer() {
-    const a = document.getElementById('ans').value.trim();
-    if (socket && roomCode) {
-      socket.emit("submit_answer", { roomCode, answer: a });
-    } else {
-      validateSoloAnswer(); // Appel de la nouvelle fonction de validation
+    function buzzUI() {
+      document.getElementById('quiz-actions').style.display = 'none';
+      document.getElementById('quiz-input').style.display = 'block';
+      document.getElementById('ans').focus();
+      document.getElementById('ans').addEventListener('keypress', e => { if (e.key === 'Enter') submitQuizAnswer(); });
     }
-  }
 
-  function validateSoloAnswer() {
-    const a = document.getElementById('ans').value.toLowerCase().trim();
-    if(!a) return;
-    
-    const correct = state.answer.toLowerCase();
-    if(a === correct) {
-      // Calcul des points : plus on répond vite (moins d'indices), plus on gagne
-      let finalScore = state.points || 10;
-      if (state.round === 3) {
-        finalScore = Math.max(2, 11 - currentClueIdx);
+    function submitQuizAnswer() {
+      const a = document.getElementById('ans').value.trim();
+      if (socket && roomCode) {
+        socket.emit("submit_answer", { roomCode, answer: a });
+      } else {
+        validateSoloAnswer();
       }
-      notify(`Top ! Bonne réponse : ${state.answer} (+${finalScore} pts)`, false);
-      end(finalScore);
-    } else {
-      notify("Faux ! La réponse était : " + state.answer, true);
-      end(0);
     }
-  }
-    const list = document.getElementById('clues-list');
-    const li = document.createElement('li');
-    li.style.marginBottom = "8px";
-    li.style.animation = "fadeIn 0.5s";
-    li.innerHTML = `👉 ${clue}`;
-    list.appendChild(li);
-  }
 
-  // JEU : PUISSANCE 4
-  function renderP4() {
-    let b = '<div class="p4-grid">';
-    for(let r=0; r<6; r++) for(let c=0; c<7; c++) {
-      let v = state.board[r][c];
-      b += `<div class="p4-cell ${v==1?'p1':(v==2?'p2':'')}" onclick="moveP4(${c})"></div>`;
+    function validateSoloAnswer() {
+      const a = document.getElementById('ans').value.toLowerCase().trim();
+      if (!a) return;
+      const correct = state.answer.toLowerCase();
+      if (a === correct) {
+        let finalScore = state.points || 10;
+        if (state.clues) { finalScore = Math.max(2, 11 - currentClueIdx); }
+        notify(`Top ! Bonne réponse : ${state.answer} (+${finalScore} pts)`, false);
+        end(finalScore);
+      } else {
+        notify("Faux ! La réponse était : " + state.answer, true);
+        end(0);
+      }
     }
-    document.getElementById('game-content').innerHTML = `
+
+    function addClueUI(clue) {
+      const list = document.getElementById('clues-list');
+      const li = document.createElement('li');
+      li.style.marginBottom = "8px";
+      li.style.animation = "fadeIn 0.5s";
+      li.innerHTML = `👉 ${clue}`;
+      list.appendChild(li);
+    }
+
+    // JEU : PUISSANCE 4
+    function renderP4() {
+      let b = '<div class="p4-grid">';
+      for (let r = 0; r < 6; r++) for (let c = 0; c < 7; c++) {
+        let v = state.board[r][c];
+        b += `<div class="p4-cell ${v == 1 ? 'p1' : (v == 2 ? 'p2' : '')}" onclick="moveP4(${c})"></div>`;
+      }
+      document.getElementById('game-content').innerHTML = `
       <h2 style="margin-top:0">Puissance 4</h2>
       <p style="margin-bottom:15px;">${state.winner ? 'Match terminé' : 'À toi de jouer (Rouge)'}</p>
-      ${b}</div>
-    `;
-    if(state.winner) end(state.winner == 1 ? 150 : 20);
-  }
-  async function moveP4(c) {
-    if(isMoving || state.winner) return;
-    isMoving = true;
-    try {
-      state = await call(`/api/p4/game/${state.id}/move`, 'POST', {column:c}); 
-      renderP4();
-      
-      // IA "Smarter" : joue après 800ms
-      if(!state.winner && state.current_player == 2) {
-        setTimeout(async () => { 
-          try {
-            // 1. Trouver les colonnes valides (non pleines)
-            const validCols = [];
-            for(let col=0; col<7; col++) {
-              if(state.board[0][col] === 0) validCols.push(col);
-            }
-            
-            if(validCols.length > 0) {
-              // 2. Stratégie simple : privilégier le centre (colonne 3) si disponible
-              let choice;
-              if(validCols.includes(3)) choice = 3;
-              else choice = validCols[Math.floor(Math.random() * validCols.length)];
-              
-              state = await call(`/api/p4/game/${state.id}/move`, 'POST', {column: choice}); 
-              renderP4();
-            }
-          } finally { isMoving = false; }
-        }, 800);
-      } else { isMoving = false; }
-    } catch(e) { isMoving = false; }
-  }
+      ${b}</div>`;
+      if (state.winner) end(state.winner == 1 ? 150 : 20);
+    }
+    async function moveP4(c) {
+      if (isMoving || state.winner) return;
+      isMoving = true;
+      try {
+        state = await call(`/api/p4/game/${state.id}/move`, 'POST', { column: c });
+        renderP4();
+        if (!state.winner && state.current_player == 2) {
+          setTimeout(async () => {
+            try {
+              const validCols = [];
+              for (let col = 0; col < 7; col++) { if (state.board[0][col] === 0) validCols.push(col); }
+              if (validCols.length > 0) {
+                let choice = validCols.includes(3) ? 3 : validCols[Math.floor(Math.random() * validCols.length)];
+                state = await call(`/api/p4/game/${state.id}/move`, 'POST', { column: choice });
+                renderP4();
+              }
+            } finally { isMoving = false; }
+          }, 800);
+        } else { isMoving = false; }
+      } catch (e) { isMoving = false; }
+    }
 
-  // JEU : MEMORY
-  function renderMem() {
-    document.getElementById('game-content').innerHTML = `
+    // JEU : MEMORY
+    function renderMem() {
+      document.getElementById('game-content').innerHTML = `
       <h2 style="margin-top:0">Memory</h2>
       <p style="margin-bottom:15px;">Trouve les paires de symboles</p>
       <div class="mem-grid">
         ${state.cards.map(c => {
-          const isFound = state.found.includes(c.id);
-          const isOpened = state.opened.includes(c.id);
-          return `<div class="mem-card ${isFound?'found':(isOpened?'flipped':'')}" onclick="flipM(${c.id})">
+        const isFound = state.found.includes(c.id);
+        const isOpened = state.opened.includes(c.id);
+        return `<div class="mem-card ${isFound ? 'found' : (isOpened ? 'flipped' : '')}" onclick="flipM(${c.id})">
                     ${isFound || isOpened ? c.value : '?'}
                   </div>`;
-        }).join('')}
-      </div>
-    `;
-    if(state.found.length === state.total_cards) end(200);
-  }
-  async function flipM(id) { 
-    if(state.found.includes(id) || state.opened.includes(id)) return;
-    if(state.opened.length >= 2) state.opened = [];
-    state = await call(`/api/memory/session/${state.id}/flip`, 'POST', {card_id:id}); 
-    renderMem(); 
-  }
+      }).join('')}
+      </div>`;
+      if (state.found.length === state.total_cards) end(200);
+    }
+    async function flipM(id) {
+      if (state.found.includes(id) || state.opened.includes(id)) return;
+      if (state.opened.length >= 2) state.opened = [];
+      state = await call(`/api/memory/session/${state.id}/flip`, 'POST', { card_id: id });
+      renderMem();
+    }
 
-  // --- Statistiques & Monitoring ---
-  async function loadLeaderboard() {
-    const d = document.getElementById('leaderboard-data');
-    d.innerHTML = '<p style="text-align:center">Chargement du classement...</p>';
-    try {
-      const res = await call('/api/scores/leaderboard');
-      if(!res.leaderboard || res.leaderboard.length === 0) {
+    // LEADERBOARD
+    async function loadLeaderboard() {
+      const d = document.getElementById('leaderboard-data');
+      d.innerHTML = '<p style="text-align:center">Chargement du classement...</p>';
+      try {
+        const res = await call('/api/scores/leaderboard');
+        if (!res.leaderboard || res.leaderboard.length === 0) {
           d.innerHTML = '<p style="text-align:center; padding:20px;">Aucun score enregistré pour le moment.</p>';
           return;
-      }
-      d.innerHTML = `<table>
+        }
+        d.innerHTML = `<table>
         <thead><tr><th>Joueur</th><th>Jeu</th><th>Score</th></tr></thead>
         <tbody>
           ${res.leaderboard.map(s => `<tr>
@@ -559,34 +752,34 @@
             <td style="text-transform:capitalize">${s.game}</td>
             <td style="color:var(--accent); font-weight:bold;">${s.best_score}</td>
           </tr>`).join('')}
-        </tbody>
-      </table>`;
-    } catch(e) { d.innerHTML = '<p style="color:var(--error); text-align:center">Service de scores indisponible.</p>'; }
-  }
-
-  async function checkHealth() {
-    const d = document.getElementById('health-data');
-    d.innerHTML = '';
-    const svcs = [
-        {id:'auth', n:'Auth API'}, 
-        {id:'pendu', n:'Pendu API'}, 
-        {id:'quiz', n:'Quiz API'}, 
-        {id:'p4', n:'Puissance 4'}, 
-        {id:'memory', n:'Memory API'}, 
-        {id:'scores', n:'Score API'}
-    ];
-    for(const s of svcs) {
-      const card = document.createElement('div');
-      card.className = 'game-card';
-      card.style.padding = '15px';
-      card.innerHTML = `<strong>${s.n}</strong><br><span id="h-${s.id}">Vérification...</span>`;
-      d.appendChild(card);
-      
-      fetch(`/api/${s.id}/healthz`)
-        .then(r => { document.getElementById('h-'+s.id).innerHTML = r.ok ? '✅ Opérationnel' : '❌ Erreur HTTP'; })
-        .catch(() => { document.getElementById('h-'+s.id).innerHTML = '❌ Injoignable'; });
+        </tbody></table>`;
+      } catch (e) { d.innerHTML = '<p style="color:var(--error); text-align:center">Service de scores indisponible.</p>'; }
     }
-  }
-</script>
+
+    // HEALTH CHECK
+    async function checkHealth() {
+      const d = document.getElementById('health-data');
+      d.innerHTML = '';
+      const svcs = [
+        { id: 'auth', n: 'Auth API' },
+        { id: 'pendu', n: 'Pendu API' },
+        { id: 'quiz', n: 'Quiz API' },
+        { id: 'p4', n: 'Puissance 4' },
+        { id: 'memory', n: 'Memory API' },
+        { id: 'scores', n: 'Score API' }
+      ];
+      for (const s of svcs) {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.style.padding = '15px';
+        card.innerHTML = `<strong>${s.n}</strong><br><span id="h-${s.id}">Vérification...</span>`;
+        d.appendChild(card);
+        fetch(`/api/${s.id}/healthz`)
+          .then(r => { document.getElementById('h-' + s.id).innerHTML = r.ok ? '✅ Opérationnel' : '❌ Erreur HTTP'; })
+          .catch(() => { document.getElementById('h-' + s.id).innerHTML = '❌ Injoignable'; });
+      }
+    }
+  </script>
 </body>
+
 </html>
