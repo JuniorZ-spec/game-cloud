@@ -45,6 +45,50 @@ jobs:
       - name: Apply KEDA ScaledObject for score-api
         run: kubectl apply --validate=false -f k8s/scores/scaled-object.yaml
 
+      - name: Install Loki + Promtail (centralized log aggregation)
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          helm upgrade --install loki grafana/loki-stack \
+            --namespace logging --create-namespace \
+            --set grafana.enabled=false \
+            --set promtail.enabled=true \
+            --wait --timeout 5m
+
+      - name: Generate fresh traffic (so Promtail has recent lines to ship)
+        run: |
+          for i in $(seq 1 10); do
+            kubectl -n gamecloud exec deploy/score-api -- \
+              wget -qO- http://localhost:3003/healthz >/dev/null 2>&1 || true
+            sleep 1
+          done
+
+      - name: Verify logs are being ingested from the gamecloud namespace
+        run: |
+          kubectl -n logging port-forward svc/loki 3100:3100 &
+          PF_PID=$!
+          sleep 8
+          echo "==> Namespaces known to Loki:"
+          curl -s "http://localhost:3100/loki/api/v1/label/namespace/values" | tee /tmp/loki-namespaces.json
+          echo ""
+          echo "==> Sample log lines from gamecloud pods:"
+          NOW_NS=$(date +%s%N)
+          START_NS=$((NOW_NS - 600000000000))
+          curl -s -G "http://localhost:3100/loki/api/v1/query_range" \
+            --data-urlencode 'query={namespace="gamecloud"}' \
+            --data-urlencode "start=${START_NS}" \
+            --data-urlencode "end=${NOW_NS}" \
+            --data-urlencode "limit=20" | tee /tmp/loki-sample.json
+          echo ""
+          if grep -q '"namespace":"gamecloud"' /tmp/loki-namespaces.json; then
+            echo "Loki is correctly ingesting logs from the gamecloud namespace."
+          else
+            echo "::error::Loki has no logs labeled namespace=gamecloud"
+            kill $PF_PID
+            exit 1
+          fi
+          kill $PF_PID
+
       - name: Build & load candidate images (tagged by commit SHA)
         run: |
           for service in $SERVICES; do
