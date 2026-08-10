@@ -55,35 +55,56 @@ jobs:
             --set promtail.enabled=true \
             --wait --timeout 5m
 
-      - name: Generate fresh traffic (so Promtail has recent lines to ship)
+      # score-api's readiness/liveness probes already hit /healthz every
+      # 10-15s (see k8s/scores/deployment.yaml), so there is always a
+      # steady stream of fresh log lines for Promtail to ship — no need
+      # to generate synthetic traffic here.
+
+      - name: Wait for Promtail to be ready
         run: |
-          for i in $(seq 1 10); do
-            kubectl -n gamecloud exec deploy/score-api -- \
-              wget -qO- http://localhost:3003/healthz >/dev/null 2>&1 || true
-            sleep 1
-          done
+          kubectl -n logging rollout status daemonset/loki-promtail --timeout=120s
+          kubectl -n logging get pods -o wide
 
       - name: Verify logs are being ingested from the gamecloud namespace
         run: |
           kubectl -n logging port-forward svc/loki 3100:3100 &
           PF_PID=$!
-          sleep 8
-          echo "==> Namespaces known to Loki:"
-          curl -s "http://localhost:3100/loki/api/v1/label/namespace/values" | tee /tmp/loki-namespaces.json
-          echo ""
-          echo "==> Sample log lines from gamecloud pods:"
-          NOW_NS=$(date +%s%N)
-          START_NS=$((NOW_NS - 600000000000))
-          curl -s -G "http://localhost:3100/loki/api/v1/query_range" \
-            --data-urlencode 'query={namespace="gamecloud"}' \
-            --data-urlencode "start=${START_NS}" \
-            --data-urlencode "end=${NOW_NS}" \
-            --data-urlencode "limit=20" | tee /tmp/loki-sample.json
-          echo ""
-          if grep -q '"namespace":"gamecloud"' /tmp/loki-namespaces.json; then
+          sleep 5
+
+          found=0
+          for attempt in $(seq 1 9); do
+            echo "==> [attempt ${attempt}/9] Namespaces known to Loki:"
+            curl -s "http://localhost:3100/loki/api/v1/label/namespace/values" | tee /tmp/loki-namespaces.json
+            echo ""
+            if grep -q '"gamecloud"' /tmp/loki-namespaces.json; then
+              found=1
+              break
+            fi
+            sleep 10
+          done
+
+          if [ "$found" -eq 1 ]; then
             echo "Loki is correctly ingesting logs from the gamecloud namespace."
+            echo "==> Sample log lines from gamecloud pods:"
+            NOW_NS=$(date +%s%N)
+            START_NS=$((NOW_NS - 600000000000))
+            curl -s -G "http://localhost:3100/loki/api/v1/query_range" \
+              --data-urlencode 'query={namespace="gamecloud"}' \
+              --data-urlencode "start=${START_NS}" \
+              --data-urlencode "end=${NOW_NS}" \
+              --data-urlencode "limit=20"
+            echo ""
           else
-            echo "::error::Loki has no logs labeled namespace=gamecloud"
+            echo "::error::Loki has no logs labeled namespace=gamecloud after 90s — dumping diagnostics"
+            echo "==> Promtail pods:"
+            kubectl -n logging get pods -o wide
+            echo "==> Promtail pod logs (last 100 lines):"
+            kubectl -n logging logs -l app=promtail --tail=100 --prefix || true
+            echo "==> All labels known to Loki:"
+            curl -s "http://localhost:3100/loki/api/v1/labels" || true
+            echo ""
+            echo "==> gamecloud pods still running:"
+            kubectl get pods -n gamecloud -o wide
             kill $PF_PID
             exit 1
           fi
