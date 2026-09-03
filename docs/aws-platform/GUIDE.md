@@ -376,9 +376,81 @@ pods `Running` (7 microservices + postgres + redis).
 
 ---
 
+## Phase 4 — ArgoCD Image Updater
+
+### Objectif
+
+Fermer la boucle : un commit de code doit finir déployé sans qu'aucune commande
+manuelle ne soit tapée entre le `git push` et le pod qui tourne.
+
+### IRSA + installation
+
+Rôle IAM dédié (lecture seule ECR) assumable par le ServiceAccount
+`argocd-image-updater`, ajouté dans `infra/terraform/modules/eks/main.tf`. Installé via
+Helm (`argo/argocd-image-updater`) sur le bastion.
+
+**Fichiers** : rôle IRSA dans `infra/terraform/modules/eks/`, config dans
+`argocd/imageupdater.yaml` et annotations dans `argocd/applicationset-services.yaml`.
+
+**Décision utilisateur** : plutôt que de créer un token GitHub (accès en écriture au
+repo), le write-back se fait **côté ArgoCD** (`write-back-method: argocd`) — le tag est
+écrit comme override sur l'Application via l'API Kubernetes, pas dans le fichier Git.
+Compromis assumé : déploiement toujours 100% automatique, mais le tag exact déployé
+n'est plus visible dans `values-*.yaml` sur Git.
+
+### Incidents réels rencontrés et résolus (transparence — série la plus longue du projet)
+
+1. **Architecture CRD inattendue** : la version installée (`v1.3.0`, puis vérifié
+   identique en `v1.2.4`/`v1.2.2`) ne lit plus les annotations globalement — il faut une
+   ressource `ImageUpdater` (CRD) explicite. Ajout de `argocd/imageupdater.yaml` avec
+   `useAnnotations: true` pour réutiliser les annotations déjà posées.
+2. **`no basic auth credentials` sur ECR malgré IRSA** : contrairement aux versions plus
+   anciennes documentées en ligne, cette version n'a **aucun mécanisme natif** de
+   détection ECR via IRSA, ni de script d'authentification externe fonctionnel (le
+   `registries.conf` Helm ne se câble même pas dans le ConfigMap, et le conteneur a un
+   filesystem en lecture seule qui casse `aws ecr get-login-password` par défaut).
+   Résolu avec la seule option réellement supportée par la CRD : un `pullSecret`
+   (Secret Kubernetes `docker-registry`, créé une fois avec un token ECR valide ~12h).
+3. **Le `pullSecret` global (CR) ne suffisait pas** : en mode `useAnnotations: true`,
+   les réglages globaux de la CR sont ignorés pour tout sauf la sélection des
+   applications. Résolu en posant le `pullSecret` **par service**, en annotation sur
+   l'ApplicationSet (`argocd-image-updater.argoproj.io/{{service}}.pull-secret`).
+4. **`helm upgrade --wait` bloquait la remontée de statut SSM** indéfiniment sur les
+   commandes longues (plusieurs minutes sans réponse, sans lien avec Kubernetes
+   lui-même). Contourné en supprimant `--wait` et en vérifiant l'état des pods
+   séparément avec des commandes courtes.
+
+Limite connue et assumée : le token ECR du `pullSecret` expire après ~12h ; en
+production, un CronJob le régénérerait périodiquement. Hors scope pour ce projet
+(cluster détruit bien avant l'expiration).
+
+### Preuve — le test qui compte
+
+Commit modifiant uniquement `services/auth-api/Dockerfile` (SHA `329faab...`) :
+
+```
+CI (GitHub Actions) : detect-changes -> build-scan-push (auth-api uniquement) -> succes
+ECR : nouvelle image gamecloud/auth-api:329faab... poussee
+Image Updater (cycle suivant, ~2 min) : "images_considered=7 images_updated=1 errors=0"
+                                         "Successfully updated application spec for auth-api"
+ArgoCD : application auth-api re-synchronisee automatiquement
+```
+
+**Vérifier** :
+```bash
+kubectl get pods -n gamecloud -l app=auth-api -o jsonpath='{.items[0].spec.containers[0].image}'
+kubectl get application auth-api -n argocd -o jsonpath='{.spec.source.helm.parameters}'
+```
+→ image du pod : `.../gamecloud/auth-api:329faab4f0ea7082646984eb65a71777163d6eaa` —
+exactement le SHA du commit, sans qu'aucun `kubectl`/`argocd`/`docker push` n'ait été
+tapé manuellement après le `git push` initial.
+
+**Statut** : ✅ Phase 4 complète, chaîne bout-en-bout vérifiée en conditions réelles.
+
+---
+
 ## Phases suivantes (à venir)
 
-- Phase 4 — ArgoCD Image Updater
 - Phase 5 — Réseau (Gateway API + AWS Load Balancer Controller)
 - Phase 6 — Identités (IRSA + Pod Identity)
 - Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
