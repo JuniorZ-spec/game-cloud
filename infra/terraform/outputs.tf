@@ -30,6 +30,10 @@ output "image_updater_role_arn" {
   value = module.eks.image_updater_role_arn
 }
 
+output "alb_controller_role_arn" {
+  value = module.eks.alb_controller_role_arn
+}
+
 output "ecr_repository_urls" {
   value = module.ecr.repository_urls
 }

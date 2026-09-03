@@ -132,6 +132,36 @@ resource "aws_iam_role" "image_updater" {
   })
 }
 
+# ============================================================
+# IRSA pour l AWS Load Balancer Controller : cree/gere les ALB en
+# reponse aux objets Gateway API. Policy officielle AWS (fichier
+# telecharge depuis le repo du projet, pas ecrite a la main).
+# ============================================================
+resource "aws_iam_role" "alb_controller" {
+  name = "${var.cluster_name}-alb-controller"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "alb_controller" {
+  name   = "${var.cluster_name}-alb-controller-policy"
+  role   = aws_iam_role.alb_controller.id
+  policy = file("${path.module}/iam-policy-alb-controller.json")
+}
+
 resource "aws_iam_role_policy" "image_updater_ecr" {
   name = "${var.cluster_name}-image-updater-ecr-read"
   role = aws_iam_role.image_updater.id
