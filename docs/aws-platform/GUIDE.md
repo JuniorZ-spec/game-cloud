@@ -286,9 +286,98 @@ gamecloud/<svc> --query "length(imageDetails)"` → `0` partout sauf auth-api).
 
 ---
 
+## Phase 3 — CD GitOps ArgoCD (Helm + Kustomize)
+
+### Architecture retenue
+
+Plutôt que de forcer Kustomize à composer un chart Helm local (technique fragile,
+pensée pour tirer des charts *distants*, pas pour en composer un local plusieurs fois),
+le choix retenu est plus standard et plus robuste : **Helm** packages l'application (un
+seul chart générique `deploy/helm/game-service`, réutilisé par les 7 microservices avec
+des `values` différentes), **Kustomize** gère les ressources partagées de la plateforme
+(`deploy/kustomize/base` : namespace, StorageClass, Postgres, Redis), et **ArgoCD**
+orchestre les deux via un **ApplicationSet** (`argocd/applicationset-services.yaml`) —
+un générateur `list` de 7 entrées pilote 7 `Application` depuis le même chart. Ajouter un
+8ème service (ou une toute autre app) = une ligne dans la liste + un fichier
+`values-<nom>.yaml`, rien à dupliquer. C'est ce qui rend la plateforme réellement
+réutilisable, pas seulement pour GameCloud.
+
+Le Secret `gamecloud-secrets` (mots de passe DB, JWT) n'est **pas** committé dans Git —
+il est créé une seule fois à la main depuis le bastion (`kubectl create secret`, valeurs
+générées aléatoirement par `openssl rand`). Le kustomize base ne le référence jamais en
+tant que ressource : un objet non suivi par ArgoCD n'est jamais écrasé par le self-heal.
+Ça évite de reproduire l'incident de clé committée déjà documenté dans
+`RETOUR_EXPERIENCE.md`.
+
+### Fichiers
+
+- `deploy/helm/game-service/` — chart générique (Deployment, Service, ServiceAccount,
+  HPA conditionnel) + `values/values-<service>.yaml` × 7.
+- `deploy/kustomize/base/` — namespace, StorageClass, Postgres, Redis (adaptés de
+  `k8s/postgres` et `k8s/redis`, sans le Secret en clair).
+- `argocd/app-datastores.yaml` — Application pointant sur le kustomize base.
+- `argocd/applicationset-services.yaml` — ApplicationSet pilotant les 7 services.
+
+### Installation (depuis le bastion, via SSM)
+
+```bash
+helm repo add argo https://argoproj.github.io/argo-helm
+helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace --wait
+kubectl create namespace gamecloud
+kubectl create secret generic gamecloud-secrets -n gamecloud \
+  --from-literal=POSTGRES_PASSWORD=$(openssl rand -hex 16) \
+  --from-literal=JWT_SECRET=$(openssl rand -hex 24) ...
+kubectl apply -f https://raw.githubusercontent.com/JuniorZ-spec/game-cloud/main/argocd/app-datastores.yaml
+kubectl apply -f https://raw.githubusercontent.com/JuniorZ-spec/game-cloud/main/argocd/applicationset-services.yaml
+```
+
+(manifests appliqués directement depuis l'URL brute GitHub — le repo est public, pas
+besoin de cloner sur le bastion)
+
+### Trois incidents réels, en cascade (transparence)
+
+Au premier déploiement, 6 des 7 microservices sont montés du premier coup — les vrais
+problèmes étaient tous côté datastore :
+
+1. **`postgres` bloqué en `Pending`** : `0/2 nodes are available: pod has unbound
+   immediate PersistentVolumeClaims`. Cause : un cluster EKS créé via Terraform brut
+   (contrairement à `eksctl`) n'installe **pas** le driver CSI EBS par défaut — sans lui,
+   aucun volume ne peut être provisionné. Corrigé en ajoutant `aws_eks_addon
+   "aws-ebs-csi-driver"` + un rôle IRSA dédié dans `infra/terraform/modules/eks/` (premier
+   vrai usage d'IRSA du projet, en avance sur la Phase 6).
+2. **PVC toujours `Pending` après le driver installé** : `no persistent volumes available
+   for this claim and no storage class is set`. Le PVC ne précisait aucune
+   `storageClassName` et aucune classe n'était marquée par défaut sur le cluster. Corrigé
+   en ajoutant une `StorageClass gp3` explicite (`provisioner: ebs.csi.aws.com`) au
+   kustomize base plutôt que de dépendre d'une classe par défaut ambiguë.
+3. **`postgres` en `CrashLoopBackOff` une fois le volume monté** : `initdb: error:
+   directory "/var/lib/postgresql/data" exists but is not empty` (contient un dossier
+   `lost+found`, créé par le filesystem du volume EBS). Fix standard : `PGDATA` pointé
+   vers un sous-dossier du point de montage (`/var/lib/postgresql/data/pgdata`).
+4. **`score-api` en cascade** : plantait simplement parce que `postgres` n'était pas
+   encore prêt (`ECONNREFUSED`) — résolu automatiquement une fois les 3 points ci-dessus
+   corrigés, confirmé par un redémarrage du pod.
+
+Chaque correctif a été poussé sur Git puis synchronisé (`argocd app sync --core`, mode
+qui parle directement à l'API Kubernetes sans exposer l'UI ArgoCD) — jamais de `kubectl
+edit` ou de correction manuelle sur le cluster qui aurait divergé de Git.
+
+### Preuve finale
+
+```bash
+kubectl get applications -n argocd
+kubectl get pods -n gamecloud
+```
+→ 8 `Application` (7 services + `gamecloud-datastores`) toutes `Synced`/`Healthy` ; 9
+pods `Running` (7 microservices + postgres + redis).
+
+**Statut** : ✅ Phase 3 complète, 4 incidents réels diagnostiqués et corrigés via Git
+(jamais de correction manuelle sur le cluster).
+
+---
+
 ## Phases suivantes (à venir)
 
-- Phase 3 — CD GitOps ArgoCD (Helm + Kustomize)
 - Phase 4 — ArgoCD Image Updater
 - Phase 5 — Réseau (Gateway API + AWS Load Balancer Controller)
 - Phase 6 — Identités (IRSA + Pod Identity)
