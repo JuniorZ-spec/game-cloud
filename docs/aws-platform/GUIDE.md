@@ -562,9 +562,66 @@ par `curl` en moins de 30 minutes au total.
 
 ---
 
+## Phase 6 — Identités (IRSA + Pod Identity)
+
+### Objectif
+
+Démontrer les deux mécanismes d'identité AWS pour des pods Kubernetes, sans jamais
+stocker de clé AWS statique dans le cluster.
+
+### IRSA — déjà largement utilisé
+
+IRSA (IAM Roles for Service Accounts) est le mécanisme utilisé depuis la Phase 1 pour
+**EBS CSI driver**, **AWS Load Balancer Controller**, et **ArgoCD Image Updater** —
+chaque pod obtient un rôle IAM via un jeton OIDC fédéré (le fournisseur OIDC du cluster,
+posé dès la Phase 1). Fonctionnement prouvé indirectement mais concrètement à chaque
+phase précédente : l'EBS CSI driver crée de vrais volumes, l'ALB Controller crée de
+vrais load balancers, l'Image Updater lit vraiment ECR — aucun n'aurait fonctionné sans
+IRSA opérationnel.
+
+### Pod Identity — nouveau mécanisme, démontré sur un composant dédié
+
+Plus récent qu'IRSA, plus simple : pas de fédération OIDC, juste une "association"
+namespace + ServiceAccount → rôle IAM, gérée par un agent (add-on EKS
+`eks-pod-identity-agent`).
+
+**Fichiers** : `infra/terraform/modules/eks/main.tf` (addon + rôle IAM + association
+`aws_eks_pod_identity_association`), `deploy/kustomize/base/pod-identity-demo-sa.yaml`
+(ServiceAccount `pod-identity-demo`, **sans aucune annotation** — contrairement à IRSA,
+c'est justement la différence clé : l'association vit côté AWS, pas dans une annotation
+Kubernetes).
+
+### Preuve — comparaison directe des deux mécanismes
+
+Pod jetable avec le ServiceAccount `pod-identity-demo` :
+```bash
+kubectl run pod-identity-test -n gamecloud --image=public.ecr.aws/aws-cli/aws-cli \
+  --overrides='{"spec":{"serviceAccountName":"pod-identity-demo"}}' --command -- sleep 300
+kubectl exec pod-identity-test -n gamecloud -- aws sts get-caller-identity
+```
+→ `Arn: arn:aws:sts::915993062361:assumed-role/gamecloud-eks-pod-identity-demo/...` —
+rôle IAM assumé sans aucune clé, aucun secret monté dans le pod.
+
+**Comparaison des variables d'environnement injectées automatiquement**, qui prouve que
+ce sont bien deux mécanismes distincts, pas juste deux noms pour la même chose :
+
+| | IRSA (pod Image Updater) | Pod Identity (pod de démo) |
+|---|---|---|
+| Variables clé | `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE` | `AWS_CONTAINER_CREDENTIALS_FULL_URI`, `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE` |
+| Chemin du token | `/var/run/secrets/**eks.amazonaws.com**/serviceaccount/token` | `/var/run/secrets/**pods.eks.amazonaws.com**/serviceaccount/...` |
+| Mécanisme | Fédération OIDC (JWT vérifié par IAM) | Agent local (`169.254.170.23`), pas d'OIDC |
+
+Pod de test supprimé après vérification (`kubectl delete pod pod-identity-test`) —
+ressource jetable, pas de coût résiduel.
+
+**Statut** : ✅ Phase 6 complète — IRSA prouvé fonctionnel via 3 composants réels
+(EBS CSI, ALB Controller, Image Updater), Pod Identity prouvé via un composant dédié
+avec comparaison directe des deux mécanismes.
+
+---
+
 ## Phases suivantes (à venir)
 
-- Phase 6 — Identités (IRSA + Pod Identity)
 - Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
 - Phase 8 — Scaling (HPA + générateur de charge)
 - Phase 9 — Documentation finale + destruction complète
