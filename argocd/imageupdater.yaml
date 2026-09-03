@@ -9,6 +9,13 @@ metadata:
   name: gamecloud-image-updater
   namespace: argocd
 spec:
+  # v1.3.0 n a plus de mecanisme de script externe pour l auth registre
+  # (contrairement aux versions plus anciennes) : seul un pullSecret
+  # (Secret Kubernetes type docker-registry) est supporte. Genere une
+  # seule fois via `aws ecr get-login-password` (valide ~12h) - dans un
+  # vrai contexte production, un CronJob le rafraichirait periodiquement.
+  commonUpdateSettings:
+    pullSecret: "argocd/ecr-creds"
   applicationRefs:
     - namePattern: "*"
       useAnnotations: true
