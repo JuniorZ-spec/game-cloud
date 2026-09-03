@@ -71,7 +71,7 @@ jobs:
       # bloquant (exit-code 0) : on veut VOIR les failles, pas casser
       # la CI d'un projet demo sur une image de base pas encore a jour.
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.ecr-login.outputs.registry }}/gamecloud/${{ matrix.service }}:${{ github.sha }}
           format: table
