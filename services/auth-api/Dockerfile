@@ -1,4 +1,4 @@
-# Build teste par la CI GitHub Actions -> ECR (gamecloud/auth-api)
+# Build teste par la CI GitHub Actions -> ECR (gamecloud/auth-api) - retest apres fix trivy
 FROM python:3.12-slim
 
 WORKDIR /app
