@@ -38,6 +38,7 @@ spec:
         argocd-image-updater.argoproj.io/image-list: "{{service}}=915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/{{service}}"
         argocd-image-updater.argoproj.io/{{service}}.update-strategy: latest
         argocd-image-updater.argoproj.io/{{service}}.helm.image-tag: image.tag
+        argocd-image-updater.argoproj.io/{{service}}.pull-secret: "pullsecret:argocd/ecr-creds"
         argocd-image-updater.argoproj.io/write-back-method: argocd
     spec:
       project: default
