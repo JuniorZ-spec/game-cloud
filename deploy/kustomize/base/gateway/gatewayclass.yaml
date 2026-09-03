@@ -1,0 +1,8 @@
+# GatewayClass : cluster-scope, pas de namespace. Delegue la creation
+# reelle des ALB au controller de l AWS Load Balancer Controller.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: alb
+spec:
+  controllerName: gateway.k8s.aws/alb

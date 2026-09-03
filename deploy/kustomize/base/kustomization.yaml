@@ -6,3 +6,6 @@ resources:
   - storageclass.yaml
   - postgres/deployment.yaml
   - redis/deployment.yaml
+  - gateway/gatewayclass.yaml
+  - gateway/gateway.yaml
+  - gateway/httproute.yaml
