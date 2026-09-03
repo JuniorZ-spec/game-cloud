@@ -1,0 +1,14 @@
+# Nouvelle architecture d ArgoCD Image Updater (v1.3.0+) : une CRD
+# ImageUpdater dedicace, plus de simples annotations lues globalement.
+# useAnnotations: true reutilise les annotations deja posees sur
+# l ApplicationSet (image-list, update-strategy, write-back-method...)
+# plutot que de tout redefinir ici.
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: gamecloud-image-updater
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: "*"
+      useAnnotations: true
