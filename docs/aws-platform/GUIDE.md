@@ -620,6 +620,28 @@ avec comparaison directe des deux mécanismes.
 
 ---
 
+## Pause budget #2 (2026-09-03, même jour) — après la Phase 6
+
+Même procédure que la première pause : retrait du Gateway/HTTPRoute de Git + sync
+ArgoCD avec `prune`, puis `terraform destroy`.
+
+**Incident réel** : le Gateway est resté bloqué en suppression quelques dizaines de
+secondes — `failed to delete securityGroup: ... DependencyViolation: resource
+sg-... has a dependent object`. Cause classique : latence de cohérence AWS le temps que
+les ENI/règles réseau associées au security group managé du LB se détachent
+complètement avant que le security group lui-même puisse être supprimé. S'est résolu
+tout seul après un court délai (aucune action requise) — noter que **ce n'est pas une
+erreur bloquante**, juste une question de patience de quelques dizaines de secondes
+avant `terraform destroy`.
+
+`terraform destroy` a ensuite réussi du premier coup (63 ressources, 0 erreur) — le
+`force_delete` sur ECR ajouté après le premier teardown a fonctionné directement,
+aucune correction en urgence nécessaire cette fois. Vérification finale identique à la
+première pause : tout confirmé à 0 (EKS, VPC, instances, NAT, ALB, ECR, state Terraform
+vide).
+
+---
+
 ## Phases suivantes (à venir)
 
 - Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
