@@ -1,4 +1,4 @@
-# Build teste par la CI GitHub Actions -> ECR (gamecloud/memory-api)
+# Rebuild post-teardown (nouveau cluster) - 20260903T155134
 FROM node:20-alpine
 
 WORKDIR /app

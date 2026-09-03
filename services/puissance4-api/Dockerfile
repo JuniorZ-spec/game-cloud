@@ -1,4 +1,4 @@
-# Build teste par la CI GitHub Actions -> ECR (gamecloud/puissance4-api)
+# Rebuild post-teardown (nouveau cluster) - 20260903T155134
 FROM python:3.12-slim
 
 WORKDIR /app
