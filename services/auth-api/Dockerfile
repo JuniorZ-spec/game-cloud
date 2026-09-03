@@ -1,4 +1,4 @@
-# Build teste par la CI GitHub Actions -> ECR (gamecloud/auth-api) - retest apres fix trivy
+# Build teste par la CI GitHub Actions -> ECR (gamecloud/auth-api) - test end-to-end Image Updater (Phase 4)
 FROM python:3.12-slim
 
 WORKDIR /app
