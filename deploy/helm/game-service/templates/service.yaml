@@ -3,6 +3,11 @@ kind: Service
 metadata:
   name: {{ .Values.name }}
   namespace: {{ .Values.namespace }}
+  annotations:
+    # Cible directement les IP des pods (VPC CNI) plutot que les ports
+    # de noeud. Contrairement a l ancien Ingress, cette annotation se
+    # pose sur le Service et non sur le Gateway pour Gateway API.
+    service.beta.kubernetes.io/aws-load-balancer-target-type: ip
 spec:
   selector:
     app: {{ .Values.name }}
