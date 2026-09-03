@@ -1,3 +1,4 @@
+# Build teste par la CI GitHub Actions -> ECR (gamecloud/score-api)
 FROM node:20-alpine
 
 WORKDIR /app
