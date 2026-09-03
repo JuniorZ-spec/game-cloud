@@ -1,0 +1,41 @@
+# Un seul chart Helm generique + cette liste = toute la plateforme.
+# Ajouter un nouveau service (ou une toute autre app) = une ligne ici
+# + un fichier values-<service>.yaml. Rien d autre a dupliquer.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: gamecloud-services
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - service: auth-api
+          - service: pendu-api
+          - service: quiz-api
+          - service: puissance4-api
+          - service: memory-api
+          - service: score-api
+          - service: frontend
+  template:
+    metadata:
+      name: "{{service}}"
+      namespace: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/JuniorZ-spec/game-cloud.git
+        targetRevision: main
+        path: deploy/helm/game-service
+        helm:
+          valueFiles:
+            - "values/values-{{service}}.yaml"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: gamecloud
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

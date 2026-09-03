@@ -1,0 +1,8 @@
+name: puissance4-api
+image:
+  repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/puissance4-api
+  tag: b7825432b8861787861905fb6c325d63f7fce9fc
+port: 5003
+env:
+  - name: REDIS_HOST
+    value: redis-service

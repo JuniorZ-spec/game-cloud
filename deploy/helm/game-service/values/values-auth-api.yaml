@@ -1,0 +1,22 @@
+name: auth-api
+image:
+  repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/auth-api
+  tag: d97bf26d8858a7913e2634b60c1d319d7155db2d
+port: 5001
+env:
+  - name: DB_HOST
+    value: postgres-service
+  - name: DB_NAME
+    value: gamecloud
+  - name: DB_USER
+    value: postgres
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: gamecloud-secrets
+        key: POSTGRES_PASSWORD
+  - name: JWT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: gamecloud-secrets
+        key: JWT_SECRET

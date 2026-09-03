@@ -1,0 +1,30 @@
+# Valeurs par defaut, ecrasees par un fichier values-<service>.yaml par service.
+name: ""
+namespace: gamecloud
+
+image:
+  repository: ""
+  tag: "latest"
+  pullPolicy: Always
+
+port: 8080
+replicaCount: 1
+
+env: []   # liste de {name, value}
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+serviceAccount:
+  annotations: {}   # accueillera l annotation IRSA (phase 6)
+
+autoscaling:
+  enabled: false   # bascule en phase 8 (HPA)
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70

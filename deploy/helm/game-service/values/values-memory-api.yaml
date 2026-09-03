@@ -1,0 +1,8 @@
+name: memory-api
+image:
+  repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/memory-api
+  tag: b7825432b8861787861905fb6c325d63f7fce9fc
+port: 3002
+env:
+  - name: REDIS_HOST
+    value: redis-service
