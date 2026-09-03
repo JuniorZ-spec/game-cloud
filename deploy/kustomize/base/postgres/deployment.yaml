@@ -4,6 +4,7 @@ metadata:
   name: postgres-pvc
   namespace: gamecloud
 spec:
+  storageClassName: gp3
   accessModes:
     - ReadWriteOnce
   resources:
