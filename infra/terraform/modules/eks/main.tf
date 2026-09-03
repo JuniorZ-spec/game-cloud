@@ -162,6 +162,67 @@ resource "aws_iam_role_policy" "alb_controller" {
   policy = file("${path.module}/iam-policy-alb-controller.json")
 }
 
+# ============================================================
+# EKS Pod Identity : mecanisme plus recent qu IRSA, plus simple
+# (pas de federation OIDC, juste une "association" namespace+
+# service-account -> role IAM). Demontre ici sur un composant
+# dedie, separe de l app, pour bien distinguer les deux mecanismes
+# d identite demandes (IRSA deja utilise par EBS CSI, ALB
+# Controller, Image Updater ; Pod Identity ici).
+# ============================================================
+resource "aws_eks_addon" "pod_identity" {
+  cluster_name = aws_eks_cluster.this.name
+  addon_name   = "eks-pod-identity-agent"
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+resource "aws_iam_role" "pod_identity_demo" {
+  name = "${var.cluster_name}-pod-identity-demo"
+
+  # Trust policy radicalement plus simple qu IRSA : pas d OIDC, pas
+  # de condition sur un subject de token. L agent Pod Identity gere
+  # lui-meme l association namespace/service-account -> role.
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "pods.eks.amazonaws.com" }
+      Action    = ["sts:AssumeRole", "sts:TagSession"]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "pod_identity_demo_ecr" {
+  name = "${var.cluster_name}-pod-identity-demo-ecr-read"
+  role = aws_iam_role.pod_identity_demo.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecr:DescribeRepositories", "ecr:ListImages"]
+        Resource = "arn:aws:ecr:eu-west-3:915993062361:repository/gamecloud/*"
+      }
+    ]
+  })
+}
+
+resource "aws_eks_pod_identity_association" "demo" {
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = "gamecloud"
+  service_account = "pod-identity-demo"
+  role_arn        = aws_iam_role.pod_identity_demo.arn
+
+  depends_on = [aws_eks_addon.pod_identity]
+}
+
 resource "aws_iam_role_policy" "image_updater_ecr" {
   name = "${var.cluster_name}-image-updater-ecr-read"
   role = aws_iam_role.image_updater.id

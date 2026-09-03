@@ -1,0 +1,10 @@
+# ServiceAccount dedie a la demonstration EKS Pod Identity (Phase 6).
+# Associe cote AWS a un role IAM via aws_eks_pod_identity_association
+# (infra/terraform/modules/eks/main.tf) - aucune annotation necessaire
+# ici contrairement a IRSA, c est bien la difference cle entre les
+# deux mecanismes.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pod-identity-demo
+  namespace: gamecloud
