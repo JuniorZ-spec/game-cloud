@@ -1,16 +1,20 @@
 # Le Gateway declenche la creation reelle d un ALB par le controller.
-# scheme=internet-facing : accessible depuis Internet (pas de domaine,
-# donc pas de TLS/ACM - HTTP simple via le nom DNS auto-genere par AWS).
+# Pas de domaine -> pas de TLS/ACM, HTTP simple via le nom DNS auto-genere.
+# Le scheme (internet-facing) est configure via LoadBalancerConfiguration
+# (loadbalancerconfig.yaml), pas via une annotation - les annotations
+# style Ingress ne sont pas lues sur le chemin Gateway API.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: gamecloud-gateway
   namespace: gamecloud
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
 spec:
   gatewayClassName: alb
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: gamecloud-lb-config
   listeners:
     - name: http
       protocol: HTTP

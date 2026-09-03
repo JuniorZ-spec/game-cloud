@@ -1,0 +1,10 @@
+# Meme principe que TargetGroupConfiguration : les reglages du LB
+# lui-meme (scheme...) passent par une CRD dediee sur Gateway API, pas
+# par les annotations style Ingress (qui ne sont pas lues ici).
+apiVersion: gateway.k8s.aws/v1
+kind: LoadBalancerConfiguration
+metadata:
+  name: gamecloud-lb-config
+  namespace: gamecloud
+spec:
+  scheme: internet-facing
