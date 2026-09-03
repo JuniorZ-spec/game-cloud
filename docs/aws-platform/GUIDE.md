@@ -266,12 +266,23 @@ Deux jobs enchaînés :
    base pas encore à jour), puis push vers ECR taguée par `${{ github.sha }}` — le SHA du
    commit exact qui a produit cette image.
 
-**Vérifier** : un push modifiant un seul service doit ne déclencher qu'un seul job dans
-l'onglet Actions, et l'image doit apparaître dans son dépôt ECR avec le tag SHA
-correspondant.
+**Incident réel** : premier test en conditions réelles → le job `build-scan-push` échoue
+instantanément à "Set up job", avant même le checkout. Diagnostic via l'API GitHub
+(`GET /repos/{repo}/check-runs/{id}/annotations`, les logs bruts nécessitent des droits
+admin même sur un repo public) : `Unable to resolve action
+aquasecurity/trivy-action@0.28.0, unable to find version 0.28.0`. Cause : les releases de
+`trivy-action` utilisent un préfixe `v` (`v0.28.0`, pas `0.28.0`). Vérifié les tags réels
+via `curl https://api.github.com/repos/aquasecurity/trivy-action/tags`, corrigé vers
+`v0.36.0` (dernière version stable). Un deuxième test confirme le succès.
 
-**Statut** : ⏳ Code écrit, test réel en attente d'un push sur le dépôt distant (GitHub
-Actions ne s'exécute que sur du code effectivement poussé).
+**Vérifié en conditions réelles** : un commit modifiant uniquement `services/auth-api/`
+n'a déclenché qu'un seul job (`build-scan-push (auth-api)`), les 6 autres services non
+touchés. L'image a atterri dans `gamecloud/auth-api` avec le tag
+`d97bf26d8858a7913e2634b60c1d319d7155db2d` — exactement le SHA du commit qui l'a produite.
+Les 6 autres dépôts ECR vérifiés vides (`aws ecr describe-images --repository-name
+gamecloud/<svc> --query "length(imageDetails)"` → `0` partout sauf auth-api).
+
+**Statut** : ✅ Phase 2 complète, testée en conditions réelles, incident inclus.
 
 ---
 
