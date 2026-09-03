@@ -449,9 +449,67 @@ tapé manuellement après le `git push` initial.
 
 ---
 
+## Phase 5 — Réseau (Gateway API + AWS Load Balancer Controller)
+
+### Objectif
+
+Remplacer l'Ingress nginx (mode Kind local) par un vrai ALB public, piloté par
+**Gateway API** — le standard qui succède à Ingress. Pas de nom de domaine → pas
+d'external-dns, pas de certificat ACM → accès HTTP simple via le nom DNS auto-généré
+par AWS.
+
+### Installation
+
+IRSA pour le contrôleur (policy IAM officielle du projet, téléchargée) dans
+`infra/terraform/modules/eks/`. CRDs Gateway API + contrôleur installés sur le bastion :
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system -f lbc-values.yaml
+```
+
+**Fichiers** : `deploy/kustomize/base/gateway/` (GatewayClass, Gateway, HTTPRoute,
+LoadBalancerConfiguration), `deploy/helm/game-service/templates/targetgroupconfiguration.yaml`.
+
+### Incidents réels — la série la plus longue du projet (transparence)
+
+Cette phase a révélé que **les annotations style Ingress (`alb.ingress.kubernetes.io/*`)
+ne sont tout simplement pas lues sur le chemin Gateway API** de ce contrôleur — leçon
+générale, pas juste des bugs isolés :
+
+1. **`TargetGroup port is empty`** : l'annotation `target-type: ip` posée sur le Gateway,
+   puis sur chaque Service, n'a aucun effet. Le vrai mécanisme est une CRD dédiée,
+   **`TargetGroupConfiguration`** (`gateway.k8s.aws/v1`), liée au Service via
+   `spec.targetReference`. Une par service, ajoutée au chart Helm générique.
+2. **ALB créé mais en `internal-...`** malgré `scheme: internet-facing` en annotation :
+   même famille de problème. Le vrai mécanisme est **`Gateway.spec.infrastructure.parametersRef`**
+   pointant sur une CRD **`LoadBalancerConfiguration`** (`gateway.k8s.aws/v1`,
+   `spec.scheme: internet-facing`).
+3. **`TargetGroupAssociationLimit`** en changeant le scheme après coup : AWS refuse de
+   réassocier les mêmes target groups à un nouveau load balancer tant que l'ancien existe.
+   Résolu en supprimant le `Gateway` (ArgoCD self-heal le recrée proprement depuis Git,
+   avec la bonne config dès la création — pas de changement à chaud).
+
+### Preuve — accès public réel
+
+```bash
+aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(DNSName,'gameclou')].{DNS:DNSName,State:State.Code,Scheme:Scheme}"
+curl http://<dns-alb>/
+curl http://<dns-alb>/api/auth/healthz
+```
+
+→ `Scheme: internet-facing`, `State: active`. La racine renvoie le HTML réel du
+frontend (`<title>GameCloud - ESGIS Arcade</title>`), et chaque chemin `/api/<service>`
+atteint bien son propre backend (réponses 404 distinctes — Flask pour auth-api, Express
+pour score-api — confirmant le bon routage, pas juste "ça répond"). Testé depuis une
+requête HTTP publique réelle, pas depuis le tunnel SSM.
+
+**Statut** : ✅ Phase 5 complète, 3 incidents réels résolus, accès public vérifié.
+
+---
+
 ## Phases suivantes (à venir)
 
-- Phase 5 — Réseau (Gateway API + AWS Load Balancer Controller)
 - Phase 6 — Identités (IRSA + Pod Identity)
 - Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
 - Phase 8 — Scaling (HPA + générateur de charge)
