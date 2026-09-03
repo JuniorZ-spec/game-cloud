@@ -1,0 +1,151 @@
+name: CI - Ephemeral Deploy, Rolling Update & Auto-Rollback
+
+# Spins up a throwaway Kind cluster on every push, deploys the stable
+# baseline (v1 images), rolls out a new SHA-tagged build on top of it,
+# and automatically rolls back any deployment whose rollout doesn't
+# succeed within the timeout. No cloud resources, no cost, fully
+# reproducible from a clean GitHub-hosted runner.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  SERVICES: "frontend auth-api pendu-api quiz-api puissance4-api memory-api score-api"
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: gamecloud
+          config: cluster/kind-config.yaml
+
+      - name: Install ingress-nginx
+        run: bash scripts/install-ingress-nginx-kind.sh
+
+      - name: Build & load baseline images (v1)
+        run: bash scripts/build-and-load.sh
+
+      - name: Deploy stable baseline
+        run: bash scripts/deploy-gamecloud.sh
+
+      # KEDA's installer checks that the gamecloud namespace already
+      # exists, so it must run after the baseline deploy, not before.
+      - name: Install KEDA
+        run: bash scripts/install-keda.sh
+
+      - name: Apply KEDA ScaledObject for score-api
+        run: kubectl apply --validate=false -f k8s/scores/scaled-object.yaml
+
+      - name: Install Loki + Promtail (centralized log aggregation)
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          helm upgrade --install loki grafana/loki-stack \
+            --namespace logging --create-namespace \
+            --set grafana.enabled=false \
+            --set promtail.enabled=true \
+            --wait --timeout 5m
+
+      # score-api's readiness/liveness probes already hit /healthz every
+      # 10-15s (see k8s/scores/deployment.yaml), so there is always a
+      # steady stream of fresh log lines for Promtail to ship — no need
+      # to generate synthetic traffic here.
+
+      - name: Wait for Promtail to be ready
+        run: |
+          kubectl -n logging rollout status daemonset/loki-promtail --timeout=120s
+          kubectl -n logging get pods -o wide
+
+      - name: Verify logs are being ingested from the gamecloud namespace
+        run: |
+          kubectl -n logging port-forward svc/loki 3100:3100 &
+          PF_PID=$!
+          sleep 5
+
+          found=0
+          for attempt in $(seq 1 9); do
+            echo "==> [attempt ${attempt}/9] Namespaces known to Loki:"
+            curl -s "http://localhost:3100/loki/api/v1/label/namespace/values" | tee /tmp/loki-namespaces.json
+            echo ""
+            if grep -q '"gamecloud"' /tmp/loki-namespaces.json; then
+              found=1
+              break
+            fi
+            sleep 10
+          done
+
+          if [ "$found" -eq 1 ]; then
+            echo "Loki is correctly ingesting logs from the gamecloud namespace."
+            echo "==> Sample log lines from gamecloud pods:"
+            NOW_NS=$(date +%s%N)
+            START_NS=$((NOW_NS - 600000000000))
+            curl -s -G "http://localhost:3100/loki/api/v1/query_range" \
+              --data-urlencode 'query={namespace="gamecloud"}' \
+              --data-urlencode "start=${START_NS}" \
+              --data-urlencode "end=${NOW_NS}" \
+              --data-urlencode "limit=20"
+            echo ""
+          else
+            echo "::error::Loki has no logs labeled namespace=gamecloud after 90s — dumping diagnostics"
+            echo "==> Promtail pods:"
+            kubectl -n logging get pods -o wide
+            echo "==> Promtail pod logs (last 100 lines):"
+            kubectl -n logging logs -l app=promtail --tail=100 --prefix || true
+            echo "==> All labels known to Loki:"
+            curl -s "http://localhost:3100/loki/api/v1/labels" || true
+            echo ""
+            echo "==> gamecloud pods still running:"
+            kubectl get pods -n gamecloud -o wide
+            kill $PF_PID
+            exit 1
+          fi
+          kill $PF_PID
+
+      - name: Build & load candidate images (tagged by commit SHA)
+        run: |
+          for service in $SERVICES; do
+            docker build -t "gamecloud/${service}:${GITHUB_SHA}" "services/${service}"
+            kind load docker-image "gamecloud/${service}:${GITHUB_SHA}" --name gamecloud
+          done
+
+      - name: Roll out candidate images
+        run: |
+          for service in $SERVICES; do
+            kubectl set image "deployment/${service}" \
+              "${service}=gamecloud/${service}:${GITHUB_SHA}" \
+              -n gamecloud
+          done
+
+      - name: Wait for rollout (auto-rollback on failure)
+        run: |
+          set +e
+          failed=0
+          for service in $SERVICES; do
+            echo "==> Watching rollout for ${service}"
+            kubectl rollout status "deployment/${service}" -n gamecloud --timeout=180s
+            if [ $? -ne 0 ]; then
+              echo "::error::Rollout failed for ${service} — rolling back to previous revision"
+              kubectl rollout undo "deployment/${service}" -n gamecloud
+              kubectl rollout status "deployment/${service}" -n gamecloud --timeout=120s
+              failed=1
+            fi
+          done
+          if [ "$failed" -eq 1 ]; then
+            echo "::error::One or more services failed to roll out and were rolled back. Failing the build."
+            exit 1
+          fi
+
+      - name: Cluster state on completion
+        if: always()
+        run: |
+          kubectl get pods -n gamecloud -o wide
+          kubectl get deployments -n gamecloud
