@@ -508,6 +508,48 @@ requête HTTP publique réelle, pas depuis le tunnel SSM.
 
 ---
 
+## Pause budget (2026-09-03) — destruction complète avant une coupure de plusieurs heures
+
+Après la Phase 5, l'utilisateur devait s'absenter plusieurs heures. Conformément à la
+discipline de coût du projet (rien ne tourne sans raison entre deux sessions), tout a été
+détruit :
+
+1. Suppression du `Gateway`/`HTTPRoute` **via Git** (retrait de
+   `deploy/kustomize/base/kustomization.yaml` + sync ArgoCD avec `prune`) — pas un
+   `kubectl delete` direct, qui aurait été immédiatement annulé par le `selfHeal` d'ArgoCD.
+   Étape obligatoire avant de couper le cluster : sans elle, l'ALB (géré par un contrôleur
+   qui aurait disparu avec le cluster) serait resté orphelin et aurait continué à facturer.
+2. `terraform destroy` sur `infra/terraform/` (VPC, EKS, bastion, ECR, IAM — tout sauf le
+   bootstrap S3/DynamoDB, gardé pour la prochaine session).
+
+**Incident réel** : pour corriger un detail (`force_delete` manquant sur les dépôts ECR,
+qui bloquait leur suppression car non-vides), un `terraform apply` a été lancé au lieu
+d'un nouveau `destroy`. **`apply` réconcilie tout l'état désiré du code** — comme le VPC/
+EKS/bastion étaient toujours définis dans les fichiers `.tf` (seulement absents du state
+après le destroy), `apply` les a **entièrement recréés**. Erreur corrigée immédiatement
+par un second `terraform destroy`. Leçon retenue : après un destroy volontaire, ne plus
+jamais lancer `apply` pour un correctif mineur — soit `destroy -target=...` ciblé, soit
+corriger puis `destroy` à nouveau, jamais `apply`.
+
+**Vérification finale** (lecture seule, tout confirmé vide) :
+```bash
+aws eks list-clusters
+aws ec2 describe-vpcs --filters "Name=tag:Name,Values=gamecloud-vpc"
+aws ec2 describe-instances --filters "Name=instance-state-name,Values=running,pending"
+aws ec2 describe-nat-gateways --filter "Name=state,Values=available,pending"
+aws elbv2 describe-load-balancers
+aws ecr describe-repositories
+terraform state list   # vide
+```
+→ 0 partout. Coût réel après cette pause : **0$/h**. Le bucket S3 + la table DynamoDB du
+bootstrap restent (quelques centimes/mois), ainsi que tout le code sur GitHub — la
+prochaine session repart avec `terraform apply` (VPC+EKS+bastion, ~15-20 min) puis
+réinstallation des outils in-cluster (ArgoCD, Image Updater, Gateway API, contrôleur ALB —
+commandes déjà documentées ci-dessus, aucun des incidents déjà résolus ne devrait se
+reproduire puisque les correctifs sont dans le code Git).
+
+---
+
 ## Phases suivantes (à venir)
 
 - Phase 6 — Identités (IRSA + Pod Identity)
