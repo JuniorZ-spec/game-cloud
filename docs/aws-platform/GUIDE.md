@@ -548,6 +548,18 @@ réinstallation des outils in-cluster (ArgoCD, Image Updater, Gateway API, contr
 commandes déjà documentées ci-dessus, aucun des incidents déjà résolus ne devrait se
 reproduire puisque les correctifs sont dans le code Git).
 
+### Reconstruction confirmée (même jour, quelques heures plus tard)
+
+Prédiction vérifiée : `terraform apply` (VPC+EKS+bastion+ECR+IAM, 59 ressources) puis
+réinstallation des outils in-cluster (ArgoCD, CRDs Gateway API, contrôleur ALB, Image
+Updater) — **aucun des incidents précédents ne s'est reproduit** (EBS CSI, StorageClass,
+PGDATA, TargetGroupConfiguration, LoadBalancerConfiguration, pull-secret par service :
+tous fonctionnels du premier coup, correctifs déjà dans le code). Seule action manuelle
+nécessaire : les dépôts ECR étant repartis vides, un nouveau build CI a été déclenché et
+les fichiers `values-*.yaml` mis à jour avec le nouveau tag avant le premier sync ArgoCD.
+8 Applications `Synced`/`Healthy`, 9 pods `Running`, nouvel ALB public actif et vérifié
+par `curl` en moins de 30 minutes au total.
+
 ---
 
 ## Phases suivantes (à venir)
