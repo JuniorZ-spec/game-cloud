@@ -1,0 +1,16 @@
+# Mecanisme correct pour configurer le target-type (ip vs instance)
+# en Gateway API sur l AWS Load Balancer Controller - les annotations
+# style Ingress (sur Gateway ou Service) ne sont PAS lues sur ce chemin,
+# contrairement a un Ingress classique. Decouvert par erreur reelle :
+# "TargetGroup port is empty" tant que cette ressource n existait pas.
+apiVersion: gateway.k8s.aws/v1
+kind: TargetGroupConfiguration
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  targetReference:
+    kind: Service
+    name: {{ .Values.name }}
+  defaultConfiguration:
+    targetType: ip
