@@ -31,3 +31,12 @@ __pycache__/
 # Node
 node_modules/
 npm-debug.log*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

@@ -1,0 +1,87 @@
+name: CI - build, scan, push
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "services/**"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write   # necessaire pour l'authentification OIDC vers AWS
+  contents: read
+
+jobs:
+  # Detecte QUEL(S) service(s) ont ete modifies dans ce push, pour ne
+  # reconstruire que ceux-la (pas les 7 a chaque fois).
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            auth-api: 'services/auth-api/**'
+            pendu-api: 'services/pendu-api/**'
+            quiz-api: 'services/quiz-api/**'
+            puissance4-api: 'services/puissance4-api/**'
+            memory-api: 'services/memory-api/**'
+            score-api: 'services/score-api/**'
+            frontend: 'services/frontend/**'
+
+  build-scan-push:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Aucune cle AWS stockee : le jeton OIDC emis par GitHub pour
+      # CETTE execution precise est echange contre des credentials
+      # AWS temporaires, valables uniquement le temps du job.
+      - name: Configure AWS credentials (OIDC, pas de cle stockee)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::915993062361:role/gamecloud-github-actions-ci
+          aws-region: eu-west-3
+
+      - name: Login ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          SERVICE: ${{ matrix.service }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/gamecloud/$SERVICE:$TAG" "services/$SERVICE"
+
+      # Scan de vulnerabilites. Rapport visible dans les logs, non
+      # bloquant (exit-code 0) : on veut VOIR les failles, pas casser
+      # la CI d'un projet demo sur une image de base pas encore a jour.
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.ecr-login.outputs.registry }}/gamecloud/${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 0
+
+      - name: Push image (taguee par le SHA du commit)
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          SERVICE: ${{ matrix.service }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker push "$REGISTRY/gamecloud/$SERVICE:$TAG"
