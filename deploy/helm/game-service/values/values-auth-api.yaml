@@ -1,7 +1,7 @@
 name: auth-api
 image:
   repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/auth-api
-  tag: d97bf26d8858a7913e2634b60c1d319d7155db2d
+  tag: 909134b0eb7bd05cbfefc07e1c2e50e010ca55bb
 port: 5001
 env:
   - name: DB_HOST

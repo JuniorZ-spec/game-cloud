@@ -1,7 +1,7 @@
 name: quiz-api
 image:
   repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/quiz-api
-  tag: b7825432b8861787861905fb6c325d63f7fce9fc
+  tag: 909134b0eb7bd05cbfefc07e1c2e50e010ca55bb
 port: 3001
 env:
   - name: SUPABASE_URL
