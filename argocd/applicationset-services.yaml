@@ -7,6 +7,13 @@ metadata:
   name: gamecloud-services
   namespace: argocd
 spec:
+  # Sans cette exception, l ApplicationSet re-ecraserait a chaque
+  # reconciliation l override de tag pose par l Image Updater (qui
+  # ne touche pas Git dans cette variante, seulement l Application
+  # elle-meme via l API Kubernetes).
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/source/helm/parameters
   generators:
     - list:
         elements:
@@ -22,15 +29,16 @@ spec:
       name: "{{service}}"
       namespace: argocd
       annotations:
-        # Surveille le depot ECR du service, ecrit le nouveau tag
-        # directement dans values/values-<service>.yaml sur Git
-        # (Git reste la source de verite, ArgoCD re-sync ensuite).
+        # Surveille le depot ECR du service. Write-back "argocd" (pas
+        # de token GitHub necessaire) : le nouveau tag est ecrit comme
+        # override sur l Application elle-meme (via l API Kubernetes,
+        # config.applicationsAPIKind=kubernetes), pas dans le fichier
+        # Git. Compromis assume : deploiement toujours 100% automatique,
+        # mais le tag exact deploye n est plus visible dans values-*.yaml.
         argocd-image-updater.argoproj.io/image-list: "{{service}}=915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/{{service}}"
         argocd-image-updater.argoproj.io/{{service}}.update-strategy: latest
         argocd-image-updater.argoproj.io/{{service}}.helm.image-tag: image.tag
-        argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/git-creds
-        argocd-image-updater.argoproj.io/write-back-target: "helmvalues:./values/values-{{service}}.yaml"
-        argocd-image-updater.argoproj.io/git-branch: main
+        argocd-image-updater.argoproj.io/write-back-method: argocd
     spec:
       project: default
       source:
