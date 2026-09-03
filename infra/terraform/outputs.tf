@@ -26,6 +26,10 @@ output "eks_oidc_provider_arn" {
   value = module.eks.oidc_provider_arn
 }
 
+output "image_updater_role_arn" {
+  value = module.eks.image_updater_role_arn
+}
+
 output "ecr_repository_urls" {
   value = module.ecr.repository_urls
 }

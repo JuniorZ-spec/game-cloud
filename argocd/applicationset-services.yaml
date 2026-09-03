@@ -21,6 +21,16 @@ spec:
     metadata:
       name: "{{service}}"
       namespace: argocd
+      annotations:
+        # Surveille le depot ECR du service, ecrit le nouveau tag
+        # directement dans values/values-<service>.yaml sur Git
+        # (Git reste la source de verite, ArgoCD re-sync ensuite).
+        argocd-image-updater.argoproj.io/image-list: "{{service}}=915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/{{service}}"
+        argocd-image-updater.argoproj.io/{{service}}.update-strategy: latest
+        argocd-image-updater.argoproj.io/{{service}}.helm.image-tag: image.tag
+        argocd-image-updater.argoproj.io/write-back-method: git
+        argocd-image-updater.argoproj.io/write-back-target: "helmvalues:./values/values-{{service}}.yaml"
+        argocd-image-updater.argoproj.io/git-branch: main
     spec:
       project: default
       source:

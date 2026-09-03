@@ -69,6 +69,96 @@ resource "aws_iam_openid_connect_provider" "eks" {
 }
 
 # ============================================================
+# EBS CSI Driver : ni EKS ni le node group ne l'installent par
+# defaut (contrairement a eksctl). Sans lui, aucun PersistentVolume
+# ne peut etre provisionne -> les pods avec PVC (postgres) restent
+# bloques en Pending indefiniment. IRSA : le pod du driver assume ce
+# role via son ServiceAccount, aucune cle AWS necessaire.
+# ============================================================
+resource "aws_iam_role" "ebs_csi" {
+  name = "${var.cluster_name}-ebs-csi-driver"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name             = aws_eks_cluster.this.name
+  addon_name               = "aws-ebs-csi-driver"
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+# ============================================================
+# IRSA pour ArgoCD Image Updater : lecture seule sur ECR (lister
+# les tags disponibles pour detecter une nouvelle image). Assume
+# via le ServiceAccount "argocd-image-updater" dans le namespace
+# argocd. Aucune cle AWS stockee dans le pod.
+# ============================================================
+resource "aws_iam_role" "image_updater" {
+  name = "${var.cluster_name}-argocd-image-updater"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = "system:serviceaccount:argocd:argocd-image-updater"
+          "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "image_updater_ecr" {
+  name = "${var.cluster_name}-image-updater-ecr-read"
+  role = aws_iam_role.image_updater.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages",
+          "ecr:BatchGetImage",
+        ]
+        Resource = "arn:aws:ecr:eu-west-3:915993062361:repository/gamecloud/*"
+      }
+    ]
+  })
+}
+
+# ============================================================
 # Rôle IAM des NŒUDS : permet à chaque instance EC2 de rejoindre
 # le cluster, de gérer les IP réseau (CNI) et de tirer les images
 # depuis ECR.
