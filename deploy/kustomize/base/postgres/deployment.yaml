@@ -71,6 +71,11 @@ spec:
                 secretKeyRef:
                   name: gamecloud-secrets
                   key: POSTGRES_PASSWORD
+            # Le point de montage EBS contient un dossier lost+found (cree par
+            # le systeme de fichiers) : initdb refuse un repertoire non-vide.
+            # On pointe PGDATA vers un sous-dossier, qui lui demarre vide.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           readinessProbe:
             exec:
               command:
