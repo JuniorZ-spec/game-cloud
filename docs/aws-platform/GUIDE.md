@@ -27,7 +27,7 @@ dépense réelle > 80%, dépense réelle > 100%, et dépense **prévisionnelle**
 consommation le laisse prévoir).
 
 ```bash
-aws budgets create-budget --account-id 915993062361 \
+aws budgets create-budget --account-id <ACCOUNT_ID> \
   --budget file://budget.json \
   --notifications-with-subscribers file://notifications.json
 ```
@@ -36,7 +36,7 @@ aws budgets create-budget --account-id 915993062361 \
 
 `notifications.json` : 3 blocs `{Notification: {NotificationType, ComparisonOperator: GREATER_THAN, Threshold, ThresholdType: PERCENTAGE}, Subscribers: [{SubscriptionType: EMAIL, Address}]}` — seuils 80 (ACTUAL), 100 (ACTUAL), 100 (FORECASTED).
 
-**Vérifier** : `aws budgets describe-budget --account-id 915993062361 --budget-name gamecloud-aws-platform` → `BudgetLimit.Amount` = `20.0`
+**Vérifier** : `aws budgets describe-budget --account-id <ACCOUNT_ID> --budget-name gamecloud-aws-platform` → `BudgetLimit.Amount` = `20.0`
 
 ### Protection du futur state Terraform
 
@@ -89,7 +89,7 @@ terraform init && terraform apply -auto-approve
 
 **Vérifier** :
 ```bash
-aws s3api head-bucket --bucket gamecloud-tfstate-915993062361-euw3
+aws s3api head-bucket --bucket gamecloud-tfstate-<ACCOUNT_ID>-euw3
 aws dynamodb describe-table --table-name gamecloud-tfstate-lock --query Table.TableStatus
 ```
 → bucket accessible, table `ACTIVE`
@@ -599,7 +599,7 @@ kubectl run pod-identity-test -n gamecloud --image=public.ecr.aws/aws-cli/aws-cl
   --overrides='{"spec":{"serviceAccountName":"pod-identity-demo"}}' --command -- sleep 300
 kubectl exec pod-identity-test -n gamecloud -- aws sts get-caller-identity
 ```
-→ `Arn: arn:aws:sts::915993062361:assumed-role/gamecloud-eks-pod-identity-demo/...` —
+→ `Arn: arn:aws:sts::<ACCOUNT_ID>:assumed-role/gamecloud-eks-pod-identity-demo/...` —
 rôle IAM assumé sans aucune clé, aucun secret monté dans le pod.
 
 **Comparaison des variables d'environnement injectées automatiquement**, qui prouve que
