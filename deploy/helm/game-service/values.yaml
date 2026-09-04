@@ -10,6 +10,11 @@ image:
 port: 8080
 replicaCount: 1
 
+# Chemin sonde par le health check ALB (independant du routage HTTPRoute,
+# qui lui garde le prefixe /api/<service> - la sonde tape directement le
+# pod sans prefixe). "/" convient au frontend ; les API ecrasent avec /healthz.
+healthCheckPath: /
+
 env: []   # liste de {name, value}
 
 resources:

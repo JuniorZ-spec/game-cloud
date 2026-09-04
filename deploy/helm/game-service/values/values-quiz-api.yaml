@@ -3,6 +3,7 @@ image:
   repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/quiz-api
   tag: 9bf3cae1901cc7f86ab83ee010d85ce7a5ece359
 port: 3001
+healthCheckPath: /healthz
 env:
   - name: SUPABASE_URL
     valueFrom:

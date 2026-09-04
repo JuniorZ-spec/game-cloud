@@ -14,3 +14,7 @@ spec:
     name: {{ .Values.name }}
   defaultConfiguration:
     targetType: ip
+    healthCheckConfig:
+      healthCheckPath: {{ .Values.healthCheckPath }}
+      matcher:
+        httpCode: "200"

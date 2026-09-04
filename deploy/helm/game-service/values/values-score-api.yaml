@@ -3,6 +3,7 @@ image:
   repository: 915993062361.dkr.ecr.eu-west-3.amazonaws.com/gamecloud/score-api
   tag: 5f3fe364dd53b7a600f88a977e3a88e1e5bada52
 port: 3003
+healthCheckPath: /healthz
 env:
   - name: DB_HOST
     value: postgres-service
