@@ -7,3 +7,7 @@ resources:
   - postgres/deployment.yaml
   - redis/deployment.yaml
   - pod-identity-demo-sa.yaml
+  - gateway/gatewayclass.yaml
+  - gateway/loadbalancerconfig.yaml
+  - gateway/gateway.yaml
+  - gateway/httproute.yaml
