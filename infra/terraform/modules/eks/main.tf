@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # ============================================================
 # Rôle IAM du CLUSTER : l'identité qu'EKS utilise pour gérer les
 # ressources AWS sous-jacentes (ENI dans les subnets, etc.).
@@ -208,7 +210,7 @@ resource "aws_iam_role_policy" "pod_identity_demo_ecr" {
       {
         Effect   = "Allow"
         Action   = ["ecr:DescribeRepositories", "ecr:ListImages"]
-        Resource = "arn:aws:ecr:eu-west-3:915993062361:repository/gamecloud/*"
+        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/gamecloud/*"
       }
     ]
   })
@@ -243,7 +245,7 @@ resource "aws_iam_role_policy" "image_updater_ecr" {
           "ecr:DescribeImages",
           "ecr:BatchGetImage",
         ]
-        Resource = "arn:aws:ecr:eu-west-3:915993062361:repository/gamecloud/*"
+        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/gamecloud/*"
       }
     ]
   })

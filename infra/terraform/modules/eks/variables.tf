@@ -2,6 +2,10 @@ variable "cluster_name" {
   type = string
 }
 
+variable "aws_region" {
+  type = string
+}
+
 variable "kubernetes_version" {
   description = "Version de Kubernetes gérée par EKS."
   type        = string

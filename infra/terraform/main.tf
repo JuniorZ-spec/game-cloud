@@ -8,10 +8,11 @@ module "vpc" {
 module "eks" {
   source = "./modules/eks"
 
-  cluster_name        = var.cluster_name
-  vpc_id              = module.vpc.vpc_id
-  private_subnet_ids  = module.vpc.private_subnet_ids
-  public_subnet_ids   = module.vpc.public_subnet_ids
+  cluster_name       = var.cluster_name
+  aws_region         = var.aws_region
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  public_subnet_ids  = module.vpc.public_subnet_ids
 }
 
 module "bastion" {
@@ -53,7 +54,7 @@ resource "aws_security_group_rule" "eks_from_bastion" {
   protocol                 = "tcp"
   security_group_id        = module.eks.cluster_security_group_id
   source_security_group_id = module.bastion.security_group_id
-  description               = "Autorise le bastion a atteindre l API Kubernetes privee"
+  description              = "Autorise le bastion a atteindre l API Kubernetes privee"
 }
 
 module "ecr" {
