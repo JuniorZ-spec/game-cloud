@@ -1,4 +1,4 @@
-# Rebuild post-teardown 2 - 20260904T034649
+# Retry apres propagation IAM (post-teardown 2)
 FROM node:20-alpine
 
 WORKDIR /app
