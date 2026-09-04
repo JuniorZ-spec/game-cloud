@@ -10,7 +10,9 @@ metadata:
   namespace: gamecloud
 type: Opaque
 stringData:
+  # Valeurs de dev local uniquement (cluster Kind ephemere) - a changer
+  # pour tout usage reel. Ne jamais committer de vrais secrets ici.
   POSTGRES_DB: gamecloud
   POSTGRES_USER: gameuser
-  POSTGRES_PASSWORD: GameCloud@K8s2024!
-  JWT_SECRET: super-jwt-secret-change-in-prod
+  POSTGRES_PASSWORD: local-dev-only-changeme
+  JWT_SECRET: local-dev-only-changeme
