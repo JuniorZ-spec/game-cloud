@@ -512,7 +512,23 @@ son propre backend — les réponses 404 sont distinctes (Flask pour auth-api, E
 score-api), ce qui confirme le bon routage plutôt que "ça répond" au hasard. Testé depuis une
 requête HTTP publique réelle, pas depuis le tunnel SSM.
 
-Phase 5 complète, 3 incidents réels résolus, accès public vérifié.
+Un quatrième problème est apparu plus tard, en préparant des captures d'écran pour ce
+document : la console EC2 affichait les 7 target groups en `Non sain` (health checks en
+404). Le trafic réel n'était pourtant pas cassé — un ALB qui voit 100% de ses cibles
+unhealthy dans un target group continue quand même à leur envoyer le trafic plutôt que de
+répondre 503 à tout le monde (comportement "fail-open" documenté par AWS), ce qui explique
+pourquoi les `curl` précédents fonctionnaient malgré cet état. La cause réelle :
+`TargetGroupConfiguration` ne précisait aucun `healthCheckConfig`, donc l'ALB sondait le
+chemin par défaut `/` sur chaque service — qui répond bien pour le frontend, mais pas pour
+les 6 microservices API, qui n'implémentent que `/healthz` (jamais de route `/`). Corrigé
+en ajoutant un `healthCheckPath` par service dans les `values-*.yaml` (`/healthz` pour les
+6 API, `/` conservé pour le frontend), lu par le chart Helm dans
+`healthCheckConfig.healthCheckPath` du `TargetGroupConfiguration`. Après un sync ArgoCD,
+les 7 target groups sont repassés `healthy` en moins d'une minute. Bonne illustration que
+"ça répond au curl" et "c'est correctement configuré" sont deux vérifications différentes —
+la seconde a failli passer inaperçue parce que la première suffisait à masquer le problème.
+
+Phase 5 complète, 4 incidents réels résolus, accès public vérifié.
 
 ---
 
