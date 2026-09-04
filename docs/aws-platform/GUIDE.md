@@ -344,7 +344,7 @@ kubectl apply -f https://raw.githubusercontent.com/JuniorZ-spec/game-cloud/main/
 (les manifests sont appliqués directement depuis l'URL brute GitHub — le repo est public,
 pas besoin de le cloner sur le bastion)
 
-### Trois incidents en cascade, tous côté datastore
+### Une cascade d'incidents, tous côté datastore
 
 Au premier déploiement, 6 des 7 microservices sont montés du premier coup. Les vrais
 problèmes se sont concentrés sur Postgres. D'abord `postgres` restait bloqué en `Pending`
@@ -734,7 +734,37 @@ Phase 7 complète, logs et métriques réels vérifiés.
 
 ---
 
+## Pause budget #3 (2026-09-04) — destruction complète après la Phase 7
+
+Même procédure que les deux précédentes, avec un préalable en plus : en préparant les
+captures d'écran de ce guide, j'ai repéré l'incident du health check ALB décrit en Phase 5
+(les 7 target groups marqués `Non sain`). Corrigé et poussé sur Git avant de couper quoi que
+ce soit, avec un sync ArgoCD forcé pour vérifier le résultat en direct (les 7 target groups
+sont repassés `healthy` en moins d'une minute) plutôt que de laisser un doute sur l'état
+réel de la plateforme au moment de la détruire.
+
+Ensuite, séquence habituelle : retrait du `Gateway`/`HTTPRoute` de
+`deploy/kustomize/base/kustomization.yaml`, sync ArgoCD avec `prune`, confirmation que
+l'objet `Gateway` et l'ALB associé ont bien disparu côté AWS, puis `terraform destroy`.
+
+```bash
+aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(DNSName,'gameclou')]"
+terraform destroy -auto-approve
+```
+
+`terraform destroy` a réussi du premier coup, 63 ressources détruites, aucune erreur.
+Vérification finale identique aux deux précédentes pauses — tout confirmé à 0 (EKS, VPC,
+instances, NAT, ALB, ECR, state Terraform vide). Coût réel : 0$/h. Seuls le bucket S3 et
+la table DynamoDB du bootstrap restent, comme à chaque pause.
+
+---
+
 ## Phases suivantes (à venir)
 
 - Phase 8 — Scaling (HPA + générateur de charge)
 - Phase 9 — Documentation finale + destruction complète
+
+Au moment d'écrire ces lignes, la plateforme est détruite (pause budget #3 ci-dessus) —
+les phases 0 à 7 sont toutes construites, vérifiées et documentées avec preuves réelles ;
+seules le scaling (Phase 8) et la synthèse finale (Phase 9) restent à faire lors d'une
+prochaine reconstruction.
