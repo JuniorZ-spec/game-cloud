@@ -41,6 +41,8 @@ prévisionnel), chacun avec mon email en `Subscriber`.
 Vérification : `aws budgets describe-budget --account-id <ACCOUNT_ID> --budget-name
 gamecloud-aws-platform` renvoie bien `BudgetLimit.Amount = 20.0`.
 
+![Budget AWS configuré à 20$ avec les 3 seuils de notification](captures/00-budget.png)
+
 Ensuite, je protège le futur state Terraform avant même d'écrire le premier fichier `.tf`.
 Terraform va bientôt générer un `.tfstate` (sa "mémoire" de ce qu'il a créé sur AWS — sans
 lui il ne sait plus ce qui existe déjà) et un dossier `.terraform/` de cache de plugins. Les
@@ -162,6 +164,10 @@ aws eks describe-nodegroup --cluster-name gamecloud-eks --nodegroup-name gameclo
 `ACTIVE` avec `Public: false` — l'accès public est bien désactivé — et le node group
 `ACTIVE` sans anomalie.
 
+![Console EKS : accès public désactivé, node group actif](captures/01-eks-networking.png)
+
+![Resource Map du VPC : 3 AZ, subnets publics/privés, NAT Gateway](captures/01-vpc-map.png)
+
 La preuve la plus importante de cette phase reste celle de l'isolation réseau elle-même.
 Depuis mon PC local, `aws eks update-kubeconfig --name gamecloud-eks --region eu-west-3`
 puis `kubectl get nodes` finit en timeout. Le kubeconfig est valide, les credentials AWS
@@ -211,6 +217,8 @@ aws ssm get-command-invocation --command-id <id> --instance-id <id> --query Stan
 Les 2 nœuds apparaissent `Ready`, vus depuis le bastion, à l'intérieur du VPC — combiné à
 l'échec confirmé plus haut depuis le PC local, c'est la preuve complète du schéma "accès
 privé uniquement via bastion".
+
+![kubectl timeout en local vs 2 nœuds Ready depuis le bastion](captures/01-isolation-proof.png)
 
 Coût de la phase 1, tout allumé en continu :
 
@@ -293,6 +301,10 @@ intacts. L'image a atterri dans `gamecloud/auth-api` avec le tag
 `d97bf26d8858a7913e2634b60c1d319d7155db2d` — exactement le SHA du commit qui l'a produite.
 Les 6 autres dépôts ECR sont vérifiés vides (`aws ecr describe-images --repository-name
 gamecloud/<svc> --query "length(imageDetails)"` renvoie `0` partout sauf auth-api).
+
+![Run GitHub Actions : un seul job déclenché pour auth-api](captures/02-ci-run.png)
+
+![Image taguée par le SHA du commit dans ECR](captures/02-ecr-tag.png)
 
 Phase 2 complète, testée en conditions réelles, incident inclus.
 
@@ -382,6 +394,8 @@ kubectl get pods -n gamecloud
 8 `Application` (7 services + `gamecloud-datastores`), toutes `Synced`/`Healthy` ; 9 pods
 `Running` (7 microservices + postgres + redis).
 
+![UI ArgoCD : 8 Applications Synced/Healthy](captures/03-argocd-apps.png)
+
 Phase 3 complète, 4 incidents réels diagnostiqués et corrigés via Git, jamais de correction
 manuelle sur le cluster.
 
@@ -454,6 +468,8 @@ L'image du pod est bien `.../gamecloud/auth-api:329faab4f0ea7082646984eb65a71777
 exactement le SHA du commit, sans qu'aucun `kubectl`/`argocd`/`docker push` n'ait été tapé
 manuellement après le `git push` initial.
 
+![Override d'image sur l'Application auth-api dans ArgoCD](captures/04-image-updater.png)
+
 Phase 4 complète, chaîne bout-en-bout vérifiée en conditions réelles.
 
 ---
@@ -512,6 +528,8 @@ son propre backend — les réponses 404 sont distinctes (Flask pour auth-api, E
 score-api), ce qui confirme le bon routage plutôt que "ça répond" au hasard. Testé depuis une
 requête HTTP publique réelle, pas depuis le tunnel SSM.
 
+![Le frontend GameCloud chargé en public depuis l'URL DNS de l'ALB](captures/05-frontend-browser.png)
+
 Un quatrième problème est apparu plus tard, en préparant des captures d'écran pour ce
 document : la console EC2 affichait les 7 target groups en `Non sain` (health checks en
 404). Le trafic réel n'était pourtant pas cassé — un ALB qui voit 100% de ses cibles
@@ -527,6 +545,8 @@ en ajoutant un `healthCheckPath` par service dans les `values-*.yaml` (`/healthz
 les 7 target groups sont repassés `healthy` en moins d'une minute. Bonne illustration que
 "ça répond au curl" et "c'est correctement configuré" sont deux vérifications différentes —
 la seconde a failli passer inaperçue parce que la première suffisait à masquer le problème.
+
+![Les 7 target groups repassés healthy après le fix du health check](captures/05-alb-healthy.png)
 
 Phase 5 complète, 4 incidents réels résolus, accès public vérifié.
 
@@ -631,6 +651,10 @@ même chose, c'est la comparaison des variables d'environnement injectées autom
 | Chemin du token | `/var/run/secrets/**eks.amazonaws.com**/serviceaccount/token` | `/var/run/secrets/**pods.eks.amazonaws.com**/serviceaccount/...` |
 | Mécanisme | Fédération OIDC (JWT vérifié par IAM) | Agent local (`169.254.170.23`), pas d'OIDC |
 
+![aws sts get-caller-identity depuis le pod : rôle assumé sans clé](captures/06-pod-identity-sts.png)
+
+![Événement CloudTrail AssumeRoleForPodIdentity au moment du test](captures/06-cloudtrail.png)
+
 Le pod de test a été supprimé après vérification (`kubectl delete pod pod-identity-test`) —
 c'était une ressource jetable, sans coût résiduel.
 
@@ -729,6 +753,10 @@ kubectl port-forward svc/gamecloud-kibana-kb-http -n monitoring 8083:5601
 Grafana affiche les dashboards Kubernetes préinstallés avec les vraies métriques CPU/RAM du
 cluster. Kibana, dans sa vue *Discover* sur l'index `filebeat-*`, montre les logs réels de
 tous les pods, GameCloud comme plateforme.
+
+![Grafana : métriques CPU/RAM réelles par namespace](captures/07-grafana.png)
+
+![Kibana : volume de logs réel ingéré en continu](captures/07-kibana.png)
 
 Phase 7 complète, logs et métriques réels vérifiés.
 
