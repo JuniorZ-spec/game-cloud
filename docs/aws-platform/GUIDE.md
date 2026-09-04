@@ -668,8 +668,58 @@ nouvel ALB public vérifié par `curl`.
 
 ---
 
+## Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
+
+### Objectif
+
+Métriques (Prometheus/Grafana/Alertmanager) et logs (Elasticsearch/Kibana/Filebeat)
+réels du cluster, pas des dashboards vides.
+
+### Architecture
+
+Comme ArgoCD/le contrôleur ALB/l'Image Updater : `kube-prometheus-stack` et l'opérateur
+**ECK** sont installés de façon **impérative** via Helm (infrastructure de plateforme).
+En revanche les ressources Elasticsearch/Kibana/Filebeat elles-mêmes sont en **Git**,
+gérées par une nouvelle Application ArgoCD dédiée (`gamecloud-observability`) — cohérent
+avec le reste du projet : la plateforme s'installe une fois, le contenu qu'elle gère
+passe par GitOps.
+
+**Fichiers** : `observability/eck/{elasticsearch,kibana,filebeat}.yaml`,
+`argocd/app-observability.yaml`. Persistence Grafana/Prometheus désactivée (rétention
+6h) pour limiter le nombre de volumes EBS sur un projet démo — Elasticsearch, lui, garde
+un volume 5Gi (`gp3`) pour survivre à un redémarrage de pod pendant la session.
+
+### Incident réel et résolu (transparence)
+
+Filebeat (DaemonSet, 2 pods) partait en `CrashLoopBackOff` :
+`missing field accessing 'filebeat.autodiscover.providers.0.node'` — la config
+référence `${NODE_NAME}` mais cette variable n'était jamais injectée dans le conteneur.
+Corrigé en ajoutant un `env: NODE_NAME` via `fieldRef: spec.nodeName` (Downward API) sur
+le pod template du DaemonSet.
+
+### Preuve — logs réels ingérés
+
+```bash
+kubectl exec -n monitoring gamecloud-logs-es-default-0 -- \
+  curl -s -k -u elastic:<password> https://localhost:9200/_cat/indices?v
+```
+→ `.ds-filebeat-8.15.0-2026.09.04-000001 ... docs.count 12158 ... store.size 14.7mb` —
+plus de 12 000 logs réels de conteneurs du cluster déjà indexés, pas un index vide.
+
+**Accès (tunnel SSM, même principe que pour ArgoCD)** :
+```bash
+kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 8082:80
+kubectl port-forward svc/gamecloud-kibana-kb-http -n monitoring 8083:5601
+```
+Grafana : dashboards Kubernetes préinstallés montrant les vraies métriques CPU/RAM du
+cluster. Kibana : vue *Discover* sur l'index `filebeat-*` montrant les logs réels de
+tous les pods (GameCloud + plateforme).
+
+**Statut** : ✅ Phase 7 complète, logs et métriques réels vérifiés.
+
+---
+
 ## Phases suivantes (à venir)
 
-- Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
 - Phase 8 — Scaling (HPA + générateur de charge)
 - Phase 9 — Documentation finale + destruction complète
