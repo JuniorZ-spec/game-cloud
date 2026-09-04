@@ -1,4 +1,4 @@
-# Rebuild post-teardown (nouveau cluster) - 20260903T155134
+# Rebuild post-teardown 2 - 20260904T034649
 FROM node:20-alpine
 
 WORKDIR /app

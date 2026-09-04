@@ -1,4 +1,4 @@
-# Rebuild post-teardown (nouveau cluster) - 20260903T155133
+# Rebuild post-teardown 2 - 20260904T034649
 FROM python:3.12-slim
 
 WORKDIR /app
