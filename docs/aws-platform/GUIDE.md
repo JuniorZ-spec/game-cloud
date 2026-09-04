@@ -642,6 +642,32 @@ vide).
 
 ---
 
+## Reconstruction #2 (2026-09-04) — incident de verrou d'état Terraform
+
+Même procédure de reconstruction que la première fois (`terraform apply` + réinstallation
+des outils + rebuild CI + mise à jour des tags). Un service (`quiz-api`) a échoué au
+premier essai CI avec une erreur de permission ECR — propagation IAM pas encore
+terminée juste après la recréation du rôle `gamecloud-github-actions-ci`, résolu par un
+simple nouveau commit déclenchant uniquement ce service.
+
+**Incident réel plus sérieux** : `terraform apply` a réussi à créer les 63 ressources
+mais a échoué en relâchant le verrou d'état (`Error releasing the state lock: ...
+unexpected end of JSON input`). Le verrou est resté bloqué dans la table DynamoDB, et
+même `terraform force-unlock` échouait avec la même erreur de parsing — ce backend de
+verrouillage (déjà signalé comme déprécié en Phase 1, `use_lockfile` recommandé à la
+place) semble avoir un vrai bug de corruption occasionnel. Résolu en supprimant
+directement l'entrée bloquée via `aws dynamodb delete-item` (sûr après avoir confirmé
+via `aws dynamodb scan` qu'il s'agissait bien de notre propre verrou). Un deuxième
+verrou corrompu est réapparu au `terraform plan` suivant — même traitement, puis
+`-lock=false` utilisé pour le reste de la session (acceptable en solo, à éviter en
+équipe). **Piste pour la suite** : migrer vers `use_lockfile = true` (verrouillage natif
+S3, sans DynamoDB) pour éliminer cette classe de bug.
+
+Reconstruction complète confirmée : 8 Applications `Synced`/`Healthy`, 9 pods `Running`,
+nouvel ALB public vérifié par `curl`.
+
+---
+
 ## Phases suivantes (à venir)
 
 - Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
