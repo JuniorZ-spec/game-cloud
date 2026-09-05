@@ -40,3 +40,6 @@ npm-debug.log*
 !*.tfvars.example
 crash.log
 crash.*.log
+
+# Generated PDF exports (built locally from docs/aws-platform/GUIDE*.md)
+docs/aws-platform/*.pdf
