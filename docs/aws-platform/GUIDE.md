@@ -13,6 +13,8 @@ devrait marcher", mais la commande exacte et sa sortie. Les incidents rencontré
 gardés tels quels, avec leur diagnostic, parce qu'ils font partie du travail autant que le
 résultat final.
 
+![Vue d'ensemble de l'architecture GameCloud sur AWS EKS](captures/schema.jpeg)
+
 ---
 
 ## Phase 0 — Garde-fous

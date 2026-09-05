@@ -10,6 +10,8 @@ Documented phase by phase: what I build, why I made a given choice, and a real v
 at each step — not "should work", but the exact command and its output. Incidents are kept
 as they happened, with their diagnosis, because they're part of the work.
 
+![GameCloud architecture overview on AWS EKS](captures/schema.jpeg)
+
 ---
 
 ## Phase 0 — Guardrails
