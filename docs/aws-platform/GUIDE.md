@@ -170,6 +170,8 @@ aws eks describe-nodegroup --cluster-name gamecloud-eks --nodegroup-name gameclo
 
 ![Resource Map du VPC : 3 AZ, subnets publics/privés, tables de routage](captures/01-vpc-map.png)
 
+![La NAT Gateway unique, partagée par les 3 AZ privées](captures/01-nat-gateway.jpg)
+
 La preuve la plus importante de cette phase reste celle de l'isolation réseau elle-même.
 Depuis mon PC local, `aws eks update-kubeconfig --name gamecloud-eks --region eu-west-3`
 puis `kubectl get nodes` finit en timeout. Le kubeconfig est valide, les credentials AWS
@@ -398,6 +400,8 @@ kubectl get pods -n gamecloud
 
 ![UI ArgoCD : 8 Applications Synced/Healthy](captures/03-argocd-apps.png)
 
+![L'ApplicationSet gamecloud-services générant les 7 Applications depuis le même chart](captures/03-argocd-applicationset.png)
+
 Phase 3 complète, 4 incidents réels diagnostiqués et corrigés via Git, jamais de correction
 manuelle sur le cluster.
 
@@ -470,6 +474,8 @@ L'image du pod est bien `.../gamecloud/auth-api:329faab4f0ea7082646984eb65a71777
 exactement le SHA du commit, sans qu'aucun `kubectl`/`argocd`/`docker push` n'ait été tapé
 manuellement après le `git push` initial.
 
+![Manifest de l'ApplicationSet : annotations Image Updater par service (image-list, pull-secret, write-back)](captures/04-image-updater.png)
+
 Phase 4 complète, chaîne bout-en-bout vérifiée en conditions réelles.
 
 ---
@@ -527,6 +533,8 @@ curl http://<dns-alb>/api/auth/healthz
 son propre backend — les réponses 404 sont distinctes (Flask pour auth-api, Express pour
 score-api), ce qui confirme le bon routage plutôt que "ça répond" au hasard. Testé depuis une
 requête HTTP publique réelle, pas depuis le tunnel SSM.
+
+![GameCloud Arcade chargé en public depuis l'URL DNS de l'ALB](captures/05-frontend-browser.png)
 
 Un quatrième problème est apparu plus tard, en préparant des captures d'écran pour ce
 document : la console EC2 affichait les 7 target groups en `Non sain` (health checks en
