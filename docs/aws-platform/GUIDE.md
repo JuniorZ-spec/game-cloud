@@ -424,8 +424,8 @@ l'Application via l'API Kubernetes, pas dans le fichier Git. C'est un compromis 
 déploiement reste 100% automatique, mais le tag exact déployé n'est plus visible dans
 `values-*.yaml` sur Git.
 
-C'est la série d'incidents la plus longue du projet, et elle mérite d'être racontée dans
-l'ordre parce que chaque étape a changé ma compréhension du composant. D'abord, la version
+Série d'incidents la plus longue du projet, chacun ayant changé ma compréhension du
+composant. D'abord, la version
 installée (`v1.3.0`, puis vérifié identique en `v1.2.4`/`v1.2.2`) ne lit plus les
 annotations globalement comme je le pensais au départ — il faut une ressource `ImageUpdater`
 (CRD) explicite. J'ai ajouté `argocd/imageupdater.yaml` avec `useAnnotations: true` pour
@@ -500,10 +500,9 @@ Fichiers : `deploy/kustomize/base/gateway/` (GatewayClass, Gateway, HTTPRoute,
 LoadBalancerConfiguration), plus
 `deploy/helm/game-service/templates/targetgroupconfiguration.yaml`.
 
-Cette phase a été la plus longue en incidents du projet, et ils partagent tous la même
-leçon : les annotations style Ingress (`alb.ingress.kubernetes.io/*`) ne sont tout
-simplement pas lues sur le chemin Gateway API de ce contrôleur. Ce n'est pas un bug isolé,
-c'est une différence d'architecture qu'il faut connaître.
+Phase la plus riche en incidents du projet, tous liés à la même cause : les annotations
+style Ingress (`alb.ingress.kubernetes.io/*`) ne sont pas lues sur le chemin Gateway API de
+ce contrôleur — une différence d'architecture, pas un bug isolé.
 
 Premier symptôme, `TargetGroup port is empty` : poser `target-type: ip` en annotation sur le
 Gateway puis sur chaque Service n'avait aucun effet. Le vrai mécanisme est une CRD dédiée,
@@ -558,58 +557,55 @@ Phase 5 complète, 4 incidents réels résolus, accès public vérifié.
 
 ---
 
-## Pause budget (2026-09-03) — destruction complète avant une coupure de plusieurs heures
+## Discipline de coût : détruire entre chaque pause, reconstruire à la demande
 
-Après la Phase 5, je devais m'absenter plusieurs heures. Conformément à ma discipline de
-coût sur ce projet — rien ne tourne sans raison entre deux sessions — j'ai tout détruit.
+Contrairement au Kind local (gratuit), un vrai cluster EKS coûte de l'argent en continu.
+Règle appliquée systématiquement : dès qu'une pause de plusieurs heures s'annonce, tout est
+détruit ; à la reprise, tout est reconstruit à l'identique depuis le code. La plateforme a
+été démontée et remontée 3 fois au total au cours du projet (après la Phase 5, après la
+Phase 6, après la Phase 7).
 
-D'abord le `Gateway`/`HTTPRoute`, retiré via Git (suppression de l'entrée dans
-`deploy/kustomize/base/kustomization.yaml` puis sync ArgoCD avec `prune`) — jamais un
-`kubectl delete` direct, qui aurait été immédiatement annulé par le `selfHeal` d'ArgoCD.
-Cette étape est obligatoire avant de couper le cluster : sans elle, l'ALB, géré par un
-contrôleur qui aurait disparu avec le cluster, serait resté orphelin et aurait continué à
-facturer. Ensuite `terraform destroy` sur `infra/terraform/` — VPC, EKS, bastion, ECR, IAM —
-tout sauf le bootstrap S3/DynamoDB, gardé pour la prochaine session.
+Séquence de démontage, identique à chaque fois :
 
-Petite mésaventure au passage : pour corriger un détail (`force_delete` manquant sur les
-dépôts ECR, qui bloquait leur suppression car non-vides), j'ai lancé un `terraform apply` au
-lieu d'un nouveau `destroy`. Erreur de réflexe — `apply` réconcilie tout l'état désiré du
-code, et comme le VPC/EKS/bastion étaient toujours définis dans les fichiers `.tf`
-(seulement absents du state après le destroy), `apply` les a entièrement recréés. Corrigé
-immédiatement par un second `terraform destroy`. La leçon que j'en retiens : après un
-destroy volontaire, ne plus jamais lancer `apply` pour un correctif mineur — soit `destroy
--target=...` ciblé, soit corriger puis `destroy` à nouveau, jamais `apply`.
+1. Retirer `Gateway`/`HTTPRoute` de `deploy/kustomize/base/kustomization.yaml`, puis sync
+   ArgoCD avec `prune` — jamais un `kubectl delete` direct, qui serait immédiatement annulé
+   par le `selfHeal` d'ArgoCD. Étape obligatoire : sans elle, l'ALB resterait orphelin (son
+   contrôleur disparaît avec le cluster) et continuerait à facturer.
+2. `terraform destroy` sur `infra/terraform/` (VPC, EKS, bastion, ECR, IAM — le bootstrap
+   S3/DynamoDB est conservé).
+3. Vérification en lecture seule que tout est à 0 : `aws eks list-clusters`, `describe-vpcs`,
+   `describe-instances`, `describe-nat-gateways`, `describe-load-balancers`,
+   `describe-repositories`, `terraform state list`.
 
-Vérification finale, en lecture seule, tout confirmé vide :
+Séquence de reconstruction : `terraform apply` (VPC+EKS+bastion+ECR+IAM, ~15-20 min), puis
+réinstallation des outils in-cluster (ArgoCD, CRDs Gateway API, contrôleur ALB, Image
+Updater) via les commandes déjà documentées plus haut. Les 3 reconstructions ont confirmé
+qu'aucun incident déjà résolu (EBS CSI, StorageClass, PGDATA, TargetGroupConfiguration,
+LoadBalancerConfiguration, pull-secret) ne revient jamais, puisque chaque correctif vit dans
+le code Git — preuve concrète que la discipline IaC/GitOps tient sa promesse. Seule action
+manuelle répétée à chaque reconstruction : relancer un build CI et mettre à jour les tags
+d'image, les dépôts ECR repartant vides à chaque fois.
 
-```bash
-aws eks list-clusters
-aws ec2 describe-vpcs --filters "Name=tag:Name,Values=gamecloud-vpc"
-aws ec2 describe-instances --filters "Name=instance-state-name,Values=running,pending"
-aws ec2 describe-nat-gateways --filter "Name=state,Values=available,pending"
-aws elbv2 describe-load-balancers
-aws ecr describe-repositories
-terraform state list   # vide
-```
+Deux incidents réels rencontrés pendant ces cycles, tous deux corrigés :
 
-0 partout. Coût réel après cette pause : 0$/h. Le bucket S3 et la table DynamoDB du
-bootstrap restent (quelques centimes/mois), ainsi que tout le code sur GitHub — la prochaine
-session repart avec `terraform apply` (VPC+EKS+bastion, ~15-20 min) puis réinstallation des
-outils in-cluster (ArgoCD, Image Updater, Gateway API, contrôleur ALB — commandes déjà
-documentées ci-dessus). Aucun des incidents déjà résolus ne devrait se reproduire puisque
-les correctifs sont dans le code Git.
+- **Un `apply` accidentel après un `destroy` volontaire.** Pour corriger un détail
+  (`force_delete` manquant sur les dépôts ECR), j'ai lancé `terraform apply` au lieu d'un
+  nouveau `destroy`. `apply` réconcilie tout l'état désiré du code — comme le VPC/EKS/bastion
+  étaient toujours définis dans les fichiers `.tf`, `apply` les a entièrement recréés.
+  Corrigé par un second `destroy` immédiat. Leçon retenue : après un destroy volontaire,
+  jamais de `apply` pour un correctif mineur — `destroy -target=...` ciblé, ou `destroy` à
+  nouveau.
+- **Un verrou d'état Terraform corrompu.** `terraform apply` a créé 63 ressources avec succès
+  mais a échoué en relâchant le verrou DynamoDB (`unexpected end of JSON input`) ; même
+  `terraform force-unlock` échouait avec la même erreur. Résolu en supprimant directement
+  l'entrée bloquée via `aws dynamodb delete-item`, après confirmation via `aws dynamodb scan`
+  qu'il s'agissait bien de mon propre verrou. Récurrent une seconde fois, traité pareil, puis
+  contourné avec `-lock=false` pour le reste de la session. Ce backend de verrouillage DIY
+  (déjà signalé comme déprécié en Phase 1) semble avoir un vrai bug de corruption occasionnel
+  — piste pour la suite : migrer vers `use_lockfile = true` (verrouillage natif S3).
 
-### Reconstruction confirmée, quelques heures plus tard le même jour
-
-La prédiction s'est vérifiée : `terraform apply` (VPC+EKS+bastion+ECR+IAM, 59 ressources)
-puis réinstallation des outils in-cluster (ArgoCD, CRDs Gateway API, contrôleur ALB, Image
-Updater) — aucun des incidents précédents ne s'est reproduit. EBS CSI, StorageClass, PGDATA,
-TargetGroupConfiguration, LoadBalancerConfiguration, pull-secret par service : tout a
-fonctionné du premier coup, puisque les correctifs sont déjà dans le code. La seule action
-manuelle nécessaire a été de relancer un build CI et de mettre à jour les fichiers
-`values-*.yaml` avec le nouveau tag avant le premier sync ArgoCD, les dépôts ECR étant
-repartis vides. Résultat : 8 Applications `Synced`/`Healthy`, 9 pods `Running`, nouvel ALB
-public actif et vérifié par `curl`, le tout en moins de 30 minutes.
+À chaque reconstruction, résultat final identique : 8 Applications `Synced`/`Healthy`, 9 pods
+`Running`, ALB public actif et vérifié par `curl` — le tout en moins de 30 minutes.
 
 ---
 
@@ -668,52 +664,6 @@ mécanismes.
 
 ---
 
-## Pause budget #2 (2026-09-03, même jour) — après la Phase 6
-
-Même procédure que la première pause : retrait du Gateway/HTTPRoute de Git avec sync ArgoCD
-en `prune`, puis `terraform destroy`.
-
-Cette fois, le Gateway est resté bloqué en suppression quelques dizaines de secondes —
-`failed to delete securityGroup: ... DependencyViolation: resource sg-... has a dependent
-object`. C'est une latence de cohérence AWS classique, le temps que les ENI/règles réseau
-associées au security group managé du LB se détachent complètement avant que le security
-group lui-même puisse être supprimé. Ça s'est résolu tout seul après un court délai, sans
-aucune action de ma part — ce n'est pas une erreur bloquante, juste une question de patience
-de quelques dizaines de secondes avant de lancer `terraform destroy`.
-
-`terraform destroy` a ensuite réussi du premier coup (63 ressources, 0 erreur) — le
-`force_delete` ajouté sur ECR après le premier teardown a fonctionné directement, aucune
-correction en urgence cette fois. La vérification finale est identique à la première pause :
-tout confirmé à 0 (EKS, VPC, instances, NAT, ALB, ECR, state Terraform vide).
-
----
-
-## Reconstruction #2 (2026-09-04) — incident de verrou d'état Terraform
-
-Même procédure de reconstruction que la première fois : `terraform apply`, réinstallation
-des outils, rebuild CI, mise à jour des tags. Un service (`quiz-api`) a échoué au premier
-essai CI avec une erreur de permission ECR — la propagation IAM n'était pas encore terminée
-juste après la recréation du rôle `gamecloud-github-actions-ci` — résolu par un simple
-nouveau commit déclenchant uniquement ce service.
-
-Un incident plus sérieux est apparu cette fois : `terraform apply` a bien réussi à créer les
-63 ressources mais a échoué en relâchant le verrou d'état (`Error releasing the state lock:
-... unexpected end of JSON input`). Le verrou est resté bloqué dans la table DynamoDB, et
-même `terraform force-unlock` échouait avec la même erreur de parsing. Ce backend de
-verrouillage — déjà signalé comme déprécié en Phase 1, `use_lockfile` étant recommandé à la
-place — semble avoir un vrai bug de corruption occasionnel. Je l'ai résolu en supprimant
-directement l'entrée bloquée via `aws dynamodb delete-item`, après avoir confirmé via `aws
-dynamodb scan` qu'il s'agissait bien de mon propre verrou. Un deuxième verrou corrompu est
-réapparu au `terraform plan` suivant — même traitement, puis j'ai utilisé `-lock=false` pour
-le reste de la session, ce qui est acceptable en solo mais à éviter en équipe. Piste pour la
-suite : migrer vers `use_lockfile = true` (verrouillage natif S3, sans DynamoDB) pour
-éliminer cette classe de bug.
-
-Reconstruction complète confirmée : 8 Applications `Synced`/`Healthy`, 9 pods `Running`,
-nouvel ALB public vérifié par `curl`.
-
----
-
 ## Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
 
 Le but est d'avoir des métriques (Prometheus/Grafana/Alertmanager) et des logs
@@ -766,37 +716,20 @@ Phase 7 complète, logs et métriques réels vérifiés.
 
 ---
 
-## Pause budget #3 (2026-09-04) — destruction complète après la Phase 7
+## Troisième et dernière destruction (2026-09-04)
 
-Même procédure que les deux précédentes, avec un préalable en plus : en préparant les
-captures d'écran de ce guide, j'ai repéré l'incident du health check ALB décrit en Phase 5
-(les 7 target groups marqués `Non sain`). Corrigé et poussé sur Git avant de couper quoi que
-ce soit, avec un sync ArgoCD forcé pour vérifier le résultat en direct (les 7 target groups
-sont repassés `healthy` en moins d'une minute) plutôt que de laisser un doute sur l'état
-réel de la plateforme au moment de la détruire.
-
-Ensuite, séquence habituelle : retrait du `Gateway`/`HTTPRoute` de
-`deploy/kustomize/base/kustomization.yaml`, sync ArgoCD avec `prune`, confirmation que
-l'objet `Gateway` et l'ALB associé ont bien disparu côté AWS, puis `terraform destroy`.
-
-```bash
-aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(DNSName,'gameclou')]"
-terraform destroy -auto-approve
-```
-
-`terraform destroy` a réussi du premier coup, 63 ressources détruites, aucune erreur.
-Vérification finale identique aux deux précédentes pauses — tout confirmé à 0 (EKS, VPC,
-instances, NAT, ALB, ECR, state Terraform vide). Coût réel : 0$/h. Seuls le bucket S3 et
-la table DynamoDB du bootstrap restent, comme à chaque pause.
+En préparant les captures d'écran de ce guide, j'ai repéré l'incident du health check ALB
+décrit en Phase 5 (les 7 target groups marqués `Non sain`). Corrigé et poussé sur Git avant
+de couper quoi que ce soit, avec un sync ArgoCD forcé pour confirmer en direct que les 7
+target groups repassaient `healthy`. Puis démontage complet suivant la même séquence
+(Gateway/HTTPRoute retiré via Git, `terraform destroy`) : 63 ressources détruites, tout
+confirmé à 0. Coût réel : 0$/h. Seuls le bucket S3 et la table DynamoDB du bootstrap
+restent.
 
 ---
 
-## Phases suivantes (à venir)
+## Phases suivantes
 
-- Phase 8 — Scaling (HPA + générateur de charge)
-- Phase 9 — Documentation finale + destruction complète
-
-Au moment d'écrire ces lignes, la plateforme est détruite (pause budget #3 ci-dessus) —
-les phases 0 à 7 sont toutes construites, vérifiées et documentées avec preuves réelles ;
-seules le scaling (Phase 8) et la synthèse finale (Phase 9) restent à faire lors d'une
-prochaine reconstruction.
+Phases 0 à 7 construites, vérifiées et documentées avec preuves réelles. Reste à faire :
+scaling (HPA + générateur de charge) et synthèse finale. Au moment d'écrire ces lignes, la
+plateforme est détruite (destruction ci-dessus) — coût réel : 0$/h.
