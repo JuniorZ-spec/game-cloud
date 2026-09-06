@@ -8,9 +8,9 @@ phase.
 
 </div>
 
-`game-cloud` started as a school project: 7 microservices + Postgres/Redis on a local Kind
-cluster, no CI/CD, fully ephemeral. This document covers how I built a real AWS cloud
-platform around that application (private VPC/EKS, GitOps CI/CD, networking, identity,
+`game-cloud` started as a 7-microservice application with Postgres/Redis, deployed on a
+local Kind cluster, no CI/CD, fully ephemeral. This document covers how I built a real AWS
+cloud platform around that application (private VPC/EKS, GitOps CI/CD, networking, identity,
 observability, scaling), treating GameCloud as a "passenger app". The platform itself is
 the point, not the game: every piece is designed to be reusable with any other application.
 

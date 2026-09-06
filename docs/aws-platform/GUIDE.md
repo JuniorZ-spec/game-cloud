@@ -8,12 +8,12 @@ fonctionnement, phase par phase.
 
 </div>
 
-`game-cloud` était au départ un TP ESGIS : 7 microservices + Postgres/Redis sur un cluster
-Kind local, sans CI/CD, éphémère par nature. Ce document raconte comment j'ai construit une
-vraie plateforme cloud AWS autour de cette application (VPC/EKS privé, CI/CD GitOps, réseau,
-identités, observabilité, scaling), en traitant GameCloud comme une simple "app passagère".
-La plateforme elle-même est ce que je voulais démontrer, pas le jeu : chaque brique est
-pensée pour être réutilisable avec n'importe quelle autre application.
+`game-cloud` était au départ une application à 7 microservices + Postgres/Redis, déployée
+sur un cluster Kind local, sans CI/CD, éphémère par nature. Ce document raconte comment j'ai
+construit une vraie plateforme cloud AWS autour de cette application (VPC/EKS privé, CI/CD
+GitOps, réseau, identités, observabilité, scaling), en traitant GameCloud comme une simple
+"app passagère". La plateforme elle-même est ce que je voulais démontrer, pas le jeu :
+chaque brique est pensée pour être réutilisable avec n'importe quelle autre application.
 
 Je documente au fil de l'eau, phase par phase : ce que je construis, pourquoi je fais ce
 choix plutôt qu'un autre, et surtout une vérification réelle à chaque étape. Pas "ça devrait

@@ -70,26 +70,9 @@ kubectl apply -f k8s/ingress/ingress-keda.yaml
 ./scripts/test-keda.sh
 ```
 
-## Structure du dépôt
-
-```text
-infra/terraform/       # VPC, EKS, bastion, ECR, IAM/OIDC
-deploy/helm/            # chart generique des microservices
-deploy/kustomize/       # ressources partagees (datastores, Gateway API)
-argocd/                 # Applications, ApplicationSet, Image Updater
-observability/eck/      # Elasticsearch/Kibana/Filebeat
-docs/aws-platform/      # guide complet (FR/EN) + captures d'ecran
-.github/workflows/      # CI (build, scan Trivy, push ECR)
-
-cluster/                # config Kind (dev local)
-k8s/                    # manifests bruts (dev local)
-services/               # code source des 7 microservices
-scripts/                # scripts de dev local
-```
-
 ## Documentation
 
 - [Guide complet de la plateforme AWS](docs/aws-platform/GUIDE.md) ([English](docs/aws-platform/GUIDE.en.md))
-- [TP complet GameCloud (Kind)](docs/TP_GAMECLOUD_COMPLET.md)
+- [Guide complet GameCloud (Kind)](docs/TP_GAMECLOUD_COMPLET.md)
 - [Extension KEDA](docs/TP_GAMECLOUD_KEDA.md)
 - [Retour d'expérience DevOps](docs/RETOUR_EXPERIENCE.md)
