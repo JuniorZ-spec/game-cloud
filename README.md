@@ -1,7 +1,7 @@
 # GameCloud — Plateforme Cloud AWS
 
-Une plateforme cloud AWS complète et réutilisable — VPC/EKS privé, CI/CD GitOps, réseau,
-identités sans clé statique, observabilité — construite autour d'une application de démo à
+Une plateforme cloud AWS complète et réutilisable (VPC/EKS privé, CI/CD GitOps, réseau,
+identités sans clé statique, observabilité), construite autour d'une application de démo à
 7 microservices. La plateforme elle-même est le sujet : chaque brique est pensée pour
 fonctionner avec n'importe quelle autre application.
 
@@ -11,7 +11,7 @@ fonctionner avec n'importe quelle autre application.
 
 - **Réseau privé** : VPC sur 3 zones de disponibilité, cluster EKS dont l'API n'est jamais
   exposée à Internet, accès admin uniquement via un bastion SSM (zéro clé SSH)
-- **CI** : GitHub Actions — build, scan Trivy, push vers Amazon ECR taggé par SHA de commit,
+- **CI** : GitHub Actions, build, scan Trivy, push vers Amazon ECR taggé par SHA de commit,
   authentification OIDC (zéro clé AWS stockée dans GitHub)
 - **CD GitOps** : ArgoCD (auto-sync, self-heal) piloté par une ApplicationSet + chart Helm
   générique, ArgoCD Image Updater pour un déploiement 100% automatique du commit au pod
