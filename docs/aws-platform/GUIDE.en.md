@@ -1,6 +1,6 @@
 <div class="cover">
 
-# GameCloud — AWS Cloud Platform on Amazon EKS
+# GameCloud: AWS Cloud Platform on Amazon EKS
 
 Complete technical documentation: architecture, GitOps CI/CD, networking, identity, and
 observability. Design, implementation, real incidents, and proof of function, phase by
@@ -22,7 +22,7 @@ as they happened, with their diagnosis, because they're part of the work.
 
 ---
 
-## Phase 0 — Guardrails
+## Phase 0: Guardrails
 
 Before touching any billable AWS resource, two free safety nets.
 
@@ -71,7 +71,7 @@ Cost of this phase: $0.
 
 ---
 
-## Phase 1 — Terraform: private VPC + EKS + bastion
+## Phase 1: Terraform: private VPC + EKS + bastion
 
 ### Bootstrap: where Terraform keeps its memory
 
@@ -237,7 +237,7 @@ Phase 1 complete and verified, real incidents included.
 
 ---
 
-## Phase 2 — GitHub Actions CI
+## Phase 2: GitHub Actions CI
 
 ### ECR and the GitHub ↔ AWS trust bridge
 
@@ -307,7 +307,7 @@ Phase 2 complete, tested under real conditions, incident included.
 
 ---
 
-## Phase 3 — ArgoCD GitOps CD (Helm + Kustomize)
+## Phase 3: ArgoCD GitOps CD (Helm + Kustomize)
 
 ### Architecture choice
 
@@ -396,7 +396,7 @@ Phase 3 complete, 4 real incidents diagnosed and fixed via Git, no manual cluste
 
 ---
 
-## Phase 4 — ArgoCD Image Updater
+## Phase 4: ArgoCD Image Updater
 
 The point of this phase: close the loop so a code commit ends up deployed with zero manual
 command typed between `git push` and the running pod.
@@ -466,7 +466,7 @@ Phase 4 complete, end-to-end chain verified under real conditions.
 
 ---
 
-## Phase 5 — Networking (Gateway API + AWS Load Balancer Controller)
+## Phase 5: Networking (Gateway API + AWS Load Balancer Controller)
 
 The goal: replace the nginx Ingress from local Kind mode with a real public ALB, driven by
 Gateway API, the standard succeeding Ingress. With no domain name, no need for
@@ -592,7 +592,7 @@ public ALB active and verified via `curl`, all within 30 minutes.
 
 ---
 
-## Phase 6 — Identity (IRSA + Pod Identity)
+## Phase 6: Identity (IRSA + Pod Identity)
 
 The goal here: demonstrate both AWS identity mechanisms for Kubernetes pods, without ever
 storing a static AWS key in the cluster.
@@ -648,7 +648,7 @@ comparison of both mechanisms.
 
 ---
 
-## Phase 7 — Observability (kube-prometheus-stack + EFK/ECK)
+## Phase 7: Observability (kube-prometheus-stack + EFK/ECK)
 
 The goal: real metrics (Prometheus/Grafana/Alertmanager) and logs
 (Elasticsearch/Kibana/Filebeat) from the cluster, not empty dashboards.

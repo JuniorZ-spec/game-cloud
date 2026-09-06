@@ -1,4 +1,4 @@
-# GameCloud — Plateforme Cloud AWS
+# GameCloud : Plateforme Cloud AWS
 
 Une plateforme cloud AWS complète et réutilisable (VPC/EKS privé, CI/CD GitOps, réseau,
 identités sans clé statique, observabilité), construite autour d'une application de démo à
@@ -36,10 +36,10 @@ GameCloud est une arcade multi-jeux avec 7 microservices : `frontend`, `auth-api
 
 | Service | Stack | Port | Dépendance |
 |---|---|---|---|
-| `frontend` | Nginx + HTML/JS | `80` | — |
+| `frontend` | Nginx + HTML/JS | `80` | - |
 | `auth-api` | Flask (JWT) | `5001` | PostgreSQL |
 | `pendu-api` | Flask | `5002` | Redis |
-| `quiz-api` | Express | `3001` | — |
+| `quiz-api` | Express | `3001` | - |
 | `puissance4-api` | Flask (IA) | `5003` | Redis |
 | `memory-api` | Express | `3002` | Redis |
 | `score-api` | Express | `3003` | PostgreSQL |

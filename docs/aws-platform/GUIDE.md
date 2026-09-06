@@ -1,6 +1,6 @@
 <div class="cover">
 
-# GameCloud — Plateforme Cloud AWS sur Amazon EKS
+# GameCloud : Plateforme Cloud AWS sur Amazon EKS
 
 Documentation technique complète : architecture, CI/CD GitOps, réseau, identités et
 observabilité. Conception, mise en œuvre, incidents rencontrés et preuves réelles de
@@ -25,7 +25,7 @@ final.
 
 ---
 
-## Phase 0 — Garde-fous
+## Phase 0 : Garde-fous
 
 Avant de toucher à la moindre ressource AWS payante, je pose deux protections gratuites.
 
@@ -77,7 +77,7 @@ Coût de cette phase : 0$.
 
 ---
 
-## Phase 1 — Terraform : VPC + EKS privé + bastion
+## Phase 1 : Terraform : VPC + EKS privé + bastion
 
 ### Bootstrap : où Terraform stocke sa mémoire
 
@@ -248,7 +248,7 @@ Phase 1 complète et vérifiée, incidents réels inclus.
 
 ---
 
-## Phase 2 — CI GitHub Actions
+## Phase 2 : CI GitHub Actions
 
 ### ECR et le pont de confiance GitHub ↔ AWS
 
@@ -322,7 +322,7 @@ Phase 2 complète, testée en conditions réelles, incident inclus.
 
 ---
 
-## Phase 3 — CD GitOps ArgoCD (Helm + Kustomize)
+## Phase 3 : CD GitOps ArgoCD (Helm + Kustomize)
 
 ### Le choix d'architecture
 
@@ -414,7 +414,7 @@ manuelle sur le cluster.
 
 ---
 
-## Phase 4 — ArgoCD Image Updater
+## Phase 4 : ArgoCD Image Updater
 
 L'idée de cette phase est de fermer la boucle : un commit de code doit finir déployé sans
 qu'aucune commande manuelle ne soit tapée entre le `git push` et le pod qui tourne.
@@ -486,7 +486,7 @@ Phase 4 complète, chaîne bout-en-bout vérifiée en conditions réelles.
 
 ---
 
-## Phase 5 — Réseau (Gateway API + AWS Load Balancer Controller)
+## Phase 5 : Réseau (Gateway API + AWS Load Balancer Controller)
 
 L'objectif est de remplacer l'Ingress nginx du mode Kind local par un vrai ALB public,
 piloté par Gateway API, le standard qui succède à Ingress. Comme je n'ai pas de nom de
@@ -615,7 +615,7 @@ Deux incidents réels rencontrés pendant ces cycles, tous deux corrigés :
 
 ---
 
-## Phase 6 — Identités (IRSA + Pod Identity)
+## Phase 6 : Identités (IRSA + Pod Identity)
 
 L'objectif ici est de démontrer les deux mécanismes d'identité AWS pour des pods
 Kubernetes, sans jamais stocker de clé AWS statique dans le cluster.
@@ -670,7 +670,7 @@ mécanismes.
 
 ---
 
-## Phase 7 — Observabilité (kube-prometheus-stack + EFK/ECK)
+## Phase 7 : Observabilité (kube-prometheus-stack + EFK/ECK)
 
 Le but est d'avoir des métriques (Prometheus/Grafana/Alertmanager) et des logs
 (Elasticsearch/Kibana/Filebeat) réels du cluster, pas des dashboards vides.
