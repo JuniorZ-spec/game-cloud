@@ -20,6 +20,53 @@ fonctionner avec n'importe quelle autre application.
   démontrés et comparés
 - **Observabilité** : métriques (Prometheus/Grafana) et logs (Elasticsearch/Kibana) réels
 
+## Aperçu
+
+<table>
+<tr>
+<td width="50%">
+
+**Le frontend, en public**
+![Frontend GameCloud chargé depuis l'URL DNS de l'ALB](docs/aws-platform/captures/05-frontend-browser.png)
+
+</td>
+<td width="50%">
+
+**ArgoCD : 8 Applications Synced/Healthy**
+![UI ArgoCD](docs/aws-platform/captures/03-argocd-apps.png)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Les 7 target groups de l'ALB, sains**
+![Target groups ALB healthy](docs/aws-platform/captures/05-alb-healthy.png)
+
+</td>
+<td width="50%">
+
+**CI GitHub Actions : build, scan, push**
+![Run GitHub Actions](docs/aws-platform/captures/02-ci-run.png)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Grafana : métriques réelles du cluster**
+![Grafana](docs/aws-platform/captures/07-grafana.png)
+
+</td>
+<td width="50%">
+
+**Kibana : logs réels ingérés en continu**
+![Kibana](docs/aws-platform/captures/07-kibana.png)
+
+</td>
+</tr>
+</table>
+
 Documentation complète, avec commandes exactes, vérifications réelles et incidents
 rencontrés (avec leur cause) : [`docs/aws-platform/GUIDE.md`](docs/aws-platform/GUIDE.md)
 ([English version](docs/aws-platform/GUIDE.en.md)).
