@@ -1,4 +1,12 @@
-# GameCloud → AWS EKS Platform — Build Guide
+<div class="cover">
+
+# GameCloud — AWS Cloud Platform on Amazon EKS
+
+Complete technical documentation: architecture, GitOps CI/CD, networking, identity, and
+observability — design, implementation, real incidents, and proof of function, phase by
+phase.
+
+</div>
 
 `game-cloud` started as a school project: 7 microservices + Postgres/Redis on a local Kind
 cluster, no CI/CD, fully ephemeral. This document covers how I built a real AWS cloud

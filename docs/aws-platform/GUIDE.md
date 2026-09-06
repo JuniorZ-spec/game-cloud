@@ -1,4 +1,12 @@
-# GameCloud → Plateforme AWS EKS — Guide de reproduction
+<div class="cover">
+
+# GameCloud — Plateforme Cloud AWS sur Amazon EKS
+
+Documentation technique complète : architecture, CI/CD GitOps, réseau, identités et
+observabilité — conception, mise en œuvre, incidents rencontrés et preuves réelles de
+fonctionnement, phase par phase.
+
+</div>
 
 `game-cloud` était au départ un TP ESGIS : 7 microservices + Postgres/Redis sur un cluster
 Kind local, sans CI/CD, éphémère par nature. Ce document raconte comment j'ai construit une
