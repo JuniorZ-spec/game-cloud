@@ -1,0 +1,84 @@
+name: pr-checks
+
+on:
+  pull_request:
+    branches: [main, develop, release/**]
+
+# Ancienne version (7 jobs, un par service, check+build ensemble).
+# Gardee en commentaire au cas ou on reviendrait dessus.
+#
+# jobs:
+#   check-auth-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: python3 -m py_compile services/auth-api/app.py
+#       - run: docker build -t gamecloud/auth-api:pr-check services/auth-api
+#
+#   check-pendu-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: python3 -m py_compile services/pendu-api/app.py
+#       - run: docker build -t gamecloud/pendu-api:pr-check services/pendu-api
+#
+#   check-puissance4-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: python3 -m py_compile services/puissance4-api/app.py
+#       - run: docker build -t gamecloud/puissance4-api:pr-check services/puissance4-api
+#
+#   check-memory-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: node --check services/memory-api/server.js
+#       - run: docker build -t gamecloud/memory-api:pr-check services/memory-api
+#
+#   check-quiz-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: node --check services/quiz-api/server.js
+#       - run: docker build -t gamecloud/quiz-api:pr-check services/quiz-api
+#
+#   check-score-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: node --check services/score-api/server.js
+#       - run: docker build -t gamecloud/score-api:pr-check services/score-api
+#
+#   check-frontend:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: docker build -t gamecloud/frontend:pr-check services/frontend
+
+# Version active : 2 jobs regroupes par type de verification (check / build),
+# chacun en matrix (une execution parallele par service).
+jobs:
+  check-syntax:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth-api, pendu-api, puissance4-api, memory-api, quiz-api, score-api]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verifie la syntaxe (Python ou Node selon le service)
+        run: |
+          if [ -f "services/${{ matrix.service }}/app.py" ]; then
+            python3 -m py_compile services/${{ matrix.service }}/app.py
+          else
+            node --check services/${{ matrix.service }}/server.js
+          fi
+
+  build-images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth-api, pendu-api, puissance4-api, memory-api, quiz-api, score-api, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t gamecloud/${{ matrix.service }}:pr-check services/${{ matrix.service }}
